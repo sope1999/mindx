@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mindx — 记忆树依赖追踪</title>
+<link rel="stylesheet" href="/static/css/style.css">
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis-network.min.js"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis-network.min.css" rel="stylesheet">
+</head>
+<body>
+
+<!-- No-project state -->
+<div id="no-project-state" class="no-project" style="display:none">
+  <p>🧠 欢迎使用 mindx</p>
+  <p>选择一个项目文件夹开始追踪</p>
+  <button id="btn-no-project-add" class="btn btn-primary">+ 添加项目</button>
+</div>
+
+<div id="app">
+  <!-- ── Header ── -->
+  <header class="toolbar">
+    <div class="brand">
+      <h1>🧠 mindx</h1>
+      <span class="subtitle">记忆树依赖追踪</span>
+    </div>
+    <!-- Project tabs -->
+    <div class="project-tabs" id="project-tabs"></div>
+    <div class="project-dropdown-wrapper" style="position:relative">
+      <button class="project-dropdown-btn" id="btn-project-dropdown" title="所有项目">▼</button>
+      <div class="project-dropdown" id="project-dropdown"></div>
+    </div>
+    <!-- Right side controls -->
+    <button id="btn-add-project" class="btn" title="添加项目文件夹">+ 添加项目</button>
+    <span id="status-dot" class="status-dot" title="连接状态"></span>
+    <span id="file-count" class="stat">—</span>
+    <button id="btn-settings" class="btn" title="项目设置">⚙</button>
+    <button id="btn-theme" class="btn" title="切换主题">🌙</button>
+    <button id="btn-rescan" class="btn" title="强制重新扫描全部文件">🔄 重新扫描</button>
+  </header>
+
+  <!-- ── Main Layout ── -->
+  <div class="main">
+
+    <!-- Left: File Tree -->
+    <aside class="panel panel-left" id="panel-left">
+      <div class="panel-header">
+        <h3>📁 文件树</h3>
+        <div class="header-actions">
+          <button id="btn-tree-ref" class="btn btn-xs" title="引用树：纯引用层级">引用</button>
+          <button id="btn-tree-dir" class="btn btn-xs active" title="目录树：引用层级 + 文件夹分组">目录</button>
+          <button id="btn-tree-select" class="btn btn-xs" title="多选模式">☑</button>
+          <button id="btn-tree-expand" class="btn btn-xs" title="全部展开">＋</button>
+          <button id="btn-tree-collapse" class="btn btn-xs" title="全部折叠">－</button>
+        </div>
+      </div>
+      <div class="panel-toolbar">
+        <input type="text" id="tree-filter" placeholder="过滤文件名..." class="filter-input">
+        <label class="toggle-label" title="记忆树核心文件（MEMORY.md + memory/）"><input type="checkbox" class="filter-core" id="chk-show-core" checked> 核心</label>
+        <label class="toggle-label" title="AGENTS/SOUL/USER/IDENTITY/HEARTBEAT"><input type="checkbox" class="filter-base" id="chk-show-base" checked> 基础</label>
+        <label class="toggle-label" title="规则/TOOLS/urls"><input type="checkbox" class="filter-standalone" id="chk-show-standalone" checked> 独立</label>
+        <label class="toggle-label" title="claude目录/Desktop路径等外部引用"><input type="checkbox" class="filter-external" id="chk-show-external"> 外部</label>
+        <label class="toggle-label" title="已手动隐藏的文件"><input type="checkbox" class="filter-hidden" id="chk-show-hidden"> 隐藏</label>
+      </div>
+      <div class="panel-body" id="file-tree"></div>
+      <div class="batch-bar" id="batch-bar" style="display:none">
+        <span id="batch-count">已选 0 个文件</span>
+        <button id="btn-batch-hide" class="btn btn-xs">🔇 隐藏已选</button>
+        <button id="btn-batch-cancel" class="btn btn-xs">取消</button>
+      </div>
+      <div class="panel-footer">
+        <span id="tree-legend">
+          <span class="dot L1"></span>L1
+          <span class="dot L2"></span>L2
+          <span class="dot L3"></span>L3
+          <span class="dot stale"></span>过期
+        </span>
+      </div>
+    </aside>
+
+    <!-- Center: Tabs (Memory Tree / Dependency Graph / File Detail) -->
+    <section class="panel panel-center">
+      <div class="tab-bar">
+        <button class="tab active" data-tab="ref-tree">🌿 引用树图</button>
+        <button class="tab" data-tab="dir-tree">📁 目录树图</button>
+        <button class="tab" data-tab="dep-graph">🔗 依赖图</button>
+        <button class="tab" data-tab="detail">📄 文件详情</button>
+      </div>
+
+      <!-- Tab: Reference Tree -->
+      <div class="tab-content active" id="tab-ref-tree">
+        <div class="tab-toolbar">
+          <label class="toggle-label"><input type="checkbox" class="filter-base" id="chk-ref-base" checked> 基础</label>
+          <label class="toggle-label"><input type="checkbox" class="filter-standalone" id="chk-ref-standalone" checked> 独立</label>
+          <span class="toolbar-sep"></span>
+          <button id="btn-ref-save" class="btn btn-xs" title="保存布局">💾 保存</button>
+        </div>
+        <div id="ref-tree-container" class="graph-container"></div>
+        <div class="view-hint">引用层级视图 — 点击节点选中文件</div>
+      </div>
+
+      <!-- Tab: Directory Tree -->
+      <div class="tab-content" id="tab-dir-tree">
+        <div class="tab-toolbar">
+          <label class="toggle-label"><input type="checkbox" class="filter-base" id="chk-dir-base" checked> 基础</label>
+          <label class="toggle-label"><input type="checkbox" class="filter-standalone" id="chk-dir-standalone" checked> 独立</label>
+          <span class="toolbar-sep"></span>
+          <button id="btn-dir-save" class="btn btn-xs" title="保存布局">💾 保存</button>
+        </div>
+        <div id="dir-tree-container" class="graph-container"></div>
+        <div class="view-hint">目录层级视图 — 点击节点选中文件</div>
+      </div>
+
+      <!-- Tab: Dependency Graph -->
+      <div class="tab-content" id="tab-dep-graph">
+        <div class="tab-toolbar">
+          <label class="toggle-label"><input type="checkbox" class="filter-base" id="chk-dep-base" checked> 基础</label>
+          <label class="toggle-label"><input type="checkbox" class="filter-standalone" id="chk-dep-standalone" checked> 独立</label>
+          <span class="toolbar-sep"></span>
+          <button id="btn-dep-save" class="btn btn-xs" title="保存当前依赖图布局">💾 保存</button>
+        </div>
+        <div id="dep-graph-container"></div>
+        <div id="dep-graph-legend" class="legend"></div>
+      </div>
+
+      <!-- Tab: File Detail -->
+      <div class="tab-content" id="tab-detail">
+        <div id="detail-empty" class="empty-state">← 在左侧文件树、记忆树图或依赖图中点击文件查看详情</div>
+        <div id="detail-content" class="detail-card" style="display:none">
+          <div class="detail-header">
+            <h2 id="detail-path"></h2>
+            <span id="detail-type-badge" class="type-badge"></span>
+          </div>
+          <div id="detail-meta"></div>
+
+          <div class="detail-section">
+            <h4>📂 完整路径</h4>
+            <div id="detail-fullpath" class="fi-path" style="margin-bottom:0"></div>
+          </div>
+
+          <div class="detail-section">
+            <h4>🏷 文件分类 <span class="hint">（点击修改，默认恢复原始分类）</span></h4>
+            <div class="classify-bar" id="detail-classify">
+              <button class="btn btn-xs classify-btn" data-cls="core">核心</button>
+              <button class="btn btn-xs classify-btn" data-cls="base">基础</button>
+              <button class="btn btn-xs classify-btn" data-cls="standalone">独立</button>
+              <button class="btn btn-xs classify-btn" data-cls="external">外部</button>
+              <span class="toolbar-sep"></span>
+              <button class="btn btn-xs classify-default-btn" id="btn-classify-default" title="恢复默认分类">↩ 默认</button>
+            </div>
+          </div>
+
+          <div class="detail-section" id="detail-stale-section" style="display:none"></div>
+
+          <div class="detail-grid">
+            <div class="detail-section">
+              <h4>📤 上级文件 <span class="hint">（引用此文件）</span></h4>
+              <div id="detail-parents" class="ref-list"></div>
+            </div>
+            <div class="detail-section">
+              <h4>📥 下级文件 <span class="hint">（被此文件引用）</span></h4>
+              <div id="detail-children" class="ref-list"></div>
+            </div>
+          </div>
+
+          <div class="detail-section" id="detail-issues-section" style="display:none">
+            <h4>⚠️ 问题</h4>
+            <div id="detail-issues"></div>
+          </div>
+
+          <div class="detail-section">
+            <h4>🔗 原始链接</h4>
+            <div id="detail-links" class="ref-list"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right: File Info + Events + Suggestions -->
+    <aside class="panel panel-right" id="panel-right">
+      <div class="panel-header">
+        <h3>📄 文件摘要</h3>
+      </div>
+      <div class="panel-body panel-info" id="file-info-panel">
+        <div id="file-info-empty" class="empty-state small">点击文件查看信息</div>
+        <div id="file-info-content" style="display:none">
+          <div class="fi-name" id="fi-name"></div>
+          <div class="fi-path" id="fi-path"></div>
+          <div class="fi-meta" id="fi-meta"></div>
+
+          <div class="fi-section">
+            <div class="fi-section-header" id="fi-parents-header">
+              <span class="fi-arrow">▶</span> 上级文件 <span id="fi-parents-count" class="fi-count"></span>
+            </div>
+            <div class="fi-section-body" id="fi-parents-list" style="display:none"></div>
+          </div>
+
+          <div class="fi-section">
+            <div class="fi-section-header" id="fi-children-header">
+              <span class="fi-arrow">▶</span> 下级文件 <span id="fi-children-count" class="fi-count"></span>
+            </div>
+            <div class="fi-section-body" id="fi-children-list" style="display:none"></div>
+          </div>
+
+          <button id="btn-show-detail" class="btn btn-primary btn-block">📋 查看详细</button>
+        </div>
+      </div>
+
+      <div class="panel-divider"></div>
+
+      <div class="panel-header">
+        <h3>📡 实时事件</h3>
+      </div>
+      <div class="panel-body panel-events">
+        <div id="change-feed" class="feed"></div>
+      </div>
+
+      <div class="panel-header">
+        <h3>💡 同步建议</h3>
+      </div>
+      <div class="panel-body panel-suggestions">
+        <div id="suggestion-feed" class="feed"></div>
+      </div>
+    </aside>
+
+  </div>
+
+  <!-- ── Statusbar ── -->
+  <footer class="statusbar">
+    <span id="footer-watching">⏳ 启动中...</span>
+    <span id="footer-path">—</span>
+    <span id="footer-scan-time"></span>
+    <span id="footer-time"></span>
+  </footer>
+</div>
+
+<!-- ── Confirm Delete Modal ── -->
+<div id="modal-confirm" class="modal-overlay" style="display:none">
+  <div class="modal-box">
+    <p id="modal-confirm-msg"></p>
+    <div class="modal-buttons">
+      <button id="modal-confirm-cancel" class="btn">取消</button>
+      <button id="modal-confirm-ok" class="btn btn-primary">确定</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Path Error Modal ── -->
+<div id="modal-error" class="modal-overlay" style="display:none">
+  <div class="modal-box">
+    <p id="modal-error-msg"></p>
+    <div class="modal-buttons">
+      <button id="modal-error-delete" class="btn">删除项目</button>
+      <button id="modal-error-rechoose" class="btn btn-primary">重新选择文件夹</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Project Settings Modal ── -->
+<div id="modal-settings" class="modal-overlay" style="display:none">
+  <div class="modal-box settings-box">
+    <div class="modal-header">
+      <span class="modal-title">⚙ 项目设置</span>
+      <button class="modal-close btn btn-xs" id="btn-settings-close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <!-- Display mode -->
+      <div class="setting-group">
+        <label class="setting-label">显示模式</label>
+        <div class="setting-options">
+          <label class="radio-label"><input type="radio" name="displayMode" value="full" id="set-mode-full"> 全量显示</label>
+          <label class="radio-label"><input type="radio" name="displayMode" value="ref" id="set-mode-ref"> 按引用显示</label>
+        </div>
+      </div>
+
+      <!-- Root files (visible in ref mode) -->
+      <div class="setting-group" id="setting-roots">
+        <label class="setting-label">引用根文件</label>
+        <div id="setting-root-list"></div>
+        <button id="btn-add-root" class="btn btn-xs">+ 添加根文件</button>
+      </div>
+
+      <!-- Excluded directories -->
+      <div class="setting-group">
+        <label class="setting-label">排除目录 / 文件</label>
+        <div id="setting-exclude-list"></div>
+        <div class="setting-row">
+          <input type="text" id="input-exclude-dir" class="filter-input" placeholder="如 temp/、archive/" style="flex:1">
+          <button id="btn-pick-exclude" class="btn btn-xs" title="从文件管理器选择">📂</button>
+          <button id="btn-add-exclude" class="btn btn-xs">添加</button>
+        </div>
+      </div>
+
+      <!-- External files -->
+      <div class="setting-group">
+        <label class="setting-label">外部文件 / 文件夹</label>
+        <div id="setting-external-list"></div>
+        <div class="setting-row">
+          <input type="text" id="input-external-path" class="filter-input" placeholder="C:\other\file.md 或 C:\other\" style="flex:1">
+          <button id="btn-pick-external-file" class="btn btn-xs" title="选择文件">📄</button>
+          <button id="btn-pick-external-folder" class="btn btn-xs" title="选择文件夹">📂</button>
+          <button id="btn-add-external" class="btn btn-xs">挂载</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-buttons" style="padding:12px 16px;border-top:1px solid var(--border)">
+      <button id="btn-settings-cancel" class="btn">取消</button>
+      <button id="btn-settings-save" class="btn btn-primary">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden folder picker -->
+<input type="file" id="folder-picker" webkitdirectory style="display:none">
+
+<script src="/static/js/app.js"></script>
+</body>
+</html>

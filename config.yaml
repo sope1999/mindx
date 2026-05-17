@@ -1,0 +1,10 @@
+version: 1.0.0
+port: 5020
+projects:
+- name: coder
+  root: C:/SOFT/AI/coder
+  external_paths:
+  - C:/Users/xiaohei/Desktop/python/1
+- name: buding
+  root: C:\SOFT\AI\buding
+  external_paths: []
