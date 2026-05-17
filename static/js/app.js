@@ -443,6 +443,7 @@ function connectSocket(){
 }
 async function api(u){const r=await fetch(u);return r.json();}
 async function initAll(){
+  await loadProjects();
   try{const st=await api('/api/status');updateStats(st);document.getElementById('footer-path').textContent=st.project_root||'—';document.getElementById('footer-watching').textContent=st.watching?'👁 监听中':'⏸ 暂停';document.getElementById('no-project-state').style.display='none';document.getElementById('app').style.display='flex';}catch(e){}
   await fetchFiles();await fetchGraph();renderAll();
 }
