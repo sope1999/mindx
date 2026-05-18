@@ -644,7 +644,12 @@ def api_positions_save():
     if not proj:
         return jsonify({"success": False}), 400
     data = request.get_json(force=True)
-    proj["positions"] = data
+    key = data.get("key", "")
+    positions = data.get("positions", {})
+    if not key:
+        return jsonify({"success": False}), 400
+    proj.setdefault("positions", {})
+    proj["positions"][key] = positions
     save_config(_config)
     return jsonify({"success": True})
 

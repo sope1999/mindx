@@ -354,10 +354,7 @@ function renderMemoryRefTree(container){
 function savePosition(key,net){
   if(!net)return;
   const pos=net.getPositions();
-  lsSet(key,pos);
-  // Async server backup (fire and forget)
-  const allPos=lsGet('reftree_positions')||{}; const all=Object.assign({},allPos,lsGet('dirtree_positions')||{},lsGet('dep_positions')||{},{[key]:pos});
-  fetch('/api/positions/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(all)}).catch(()=>{});
+  fetch('/api/positions/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:key,positions:pos})}).catch(()=>{});
 }
 function saveRefTreePositions(){savePosition('reftree_positions',S.netRefTree);}
 function saveDirTreePositions(){savePosition('dirtree_positions',S.netDirTree);}
