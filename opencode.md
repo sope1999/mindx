@@ -1,7 +1,9 @@
 # mindx 开发文档（v4.2）
 
-> ⚠️ **AI 开发规则：修改任何文件前必须先 `git add -A && git commit -m "描述"`。**
-> 本项目无远程仓库，git 是唯一恢复手段。违反此规则的历史教训：app.js 全量丢失需重写。
+> ⚠️ **AI 开发规则（不可跳过）：**
+> 1. 改代码必须走 hephaestus agent 或 `task(category="quick")`
+> 2. 每次改动后立即 `git add -A && git commit -m "描述"`，commit before next action
+> 3. 不直接 edit/write，不跳过验证，不跳过 git
 
 ## 项目概述
 
