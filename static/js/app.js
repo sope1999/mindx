@@ -486,7 +486,7 @@ async function handleErrorRechoose(){document.getElementById('modal-error').styl
 // ── Tree mode toggles ──
 function updateTreeButtons(){document.getElementById('btn-tree-ref').classList.toggle('active',S.treeMode==='ref');document.getElementById('btn-tree-dir').classList.toggle('active',S.treeMode==='dir');}
 function onFilterChange(e){
-  if(e&&e.target){const id=e.target.id;if(id.includes('base'))S.showBase=e.target.checked;if(id.includes('standalone'))S.showStandalone=e.target.checked;}
+  if(e&&e.target){const id=e.target.id;if(id.includes('core'))S.showCore=e.target.checked;if(id.includes('base'))S.showBase=e.target.checked;if(id.includes('standalone'))S.showStandalone=e.target.checked;if(id.includes('external'))S.showExternal=e.target.checked;if(id.includes('hidden'))S.showHidden=e.target.checked;}
   else{S.showCore=document.getElementById('chk-show-core').checked;S.showBase=document.getElementById('chk-show-base').checked;S.showStandalone=document.getElementById('chk-show-standalone').checked;S.showExternal=document.getElementById('chk-show-external').checked;S.showHidden=document.getElementById('chk-show-hidden').checked;}
   // Sync all checkboxes
   document.querySelectorAll('[id*="show-core"],[id*="-core"]').forEach(cb=>cb.checked=S.showCore);
