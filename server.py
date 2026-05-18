@@ -635,6 +635,31 @@ def _poll_external_files():
             pass
 
 
+@app.route("/api/positions/save", methods=["POST"])
+def api_positions_save():
+    """Save graph layout positions for active project."""
+    if active_project is None:
+        return jsonify({"success": False}), 400
+    proj = get_project_config(_config, active_project)
+    if not proj:
+        return jsonify({"success": False}), 400
+    data = request.get_json(force=True)
+    proj["positions"] = data
+    save_config(_config)
+    return jsonify({"success": True})
+
+
+@app.route("/api/positions/load")
+def api_positions_load():
+    """Load graph layout positions for active project."""
+    if active_project is None:
+        return jsonify({})
+    proj = get_project_config(_config, active_project)
+    if not proj:
+        return jsonify({})
+    return jsonify(proj.get("positions", {}))
+
+
 def run_server():
     """Start the mindx server."""
     init_engine()

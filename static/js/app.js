@@ -351,8 +351,17 @@ function renderMemoryRefTree(container){
   if(isFirstRender){setTimeout(()=>{const pos=S.netRefTree.getPositions();S.netRefTree.destroy();const opts2={layout:{hierarchical:false,improvedLayout:true,randomSeed:42},physics:{solver:'forceAtlas2Based',forceAtlas2Based:{gravitationalConstant:-50,centralGravity:0.01,springLength:100,springConstant:0.08},stabilization:{iterations:150}},interaction:{hover:true,navigationButtons:true,keyboard:true}};S.netRefTree=new vis.Network(container,data,opts2);S.netRefTree.on('stabilized',()=>{S.netRefTree.setOptions({physics:false});});S.netRefTree.on('dragEnd',()=>{saveRefTreePositions();});S.netRefTree.on('click',params=>{if(params.nodes.length>0){const id=params.nodes[0];if(id!=='__ROOT__'&&!id.endsWith('/'))selectFile(id);}});},1500);}
   else{let stab=false;S.netRefTree.on('stabilized',()=>{if(!stab){stab=true;S.netRefTree.setOptions({physics:false});}});S.netRefTree.on('dragEnd',()=>{saveRefTreePositions();});S.netRefTree.on('click',params=>{if(params.nodes.length>0){const id=params.nodes[0];if(id!=='__ROOT__'&&!id.endsWith('/'))selectFile(id);}});}
 }
-function saveRefTreePositions(){if(S.netRefTree)lsSet('reftree_positions',S.netRefTree.getPositions());}
-function saveDirTreePositions(){if(S.netDirTree)lsSet('dirtree_positions',S.netDirTree.getPositions());}
+function savePosition(key,net){
+  if(!net)return;
+  const pos=net.getPositions();
+  lsSet(key,pos);
+  // Async server backup (fire and forget)
+  const allPos=lsGet('reftree_positions')||{}; const all=Object.assign({},allPos,lsGet('dirtree_positions')||{},lsGet('dep_positions')||{},{[key]:pos});
+  fetch('/api/positions/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(all)}).catch(()=>{});
+}
+function saveRefTreePositions(){savePosition('reftree_positions',S.netRefTree);}
+function saveDirTreePositions(){savePosition('dirtree_positions',S.netDirTree);}
+function saveDepPositions(){savePosition('dep_positions',S.netDepGraph);}
 
 function renderMemoryDirTree(container){
   const nodes=[],edges=[],nodeIds=new Set();
@@ -397,7 +406,7 @@ function renderDepGraph(){
   S.netDepGraph.on('click',params=>{if(params.nodes.length>0)selectFile(params.nodes[0]);});
   S.netDepGraph.on('dragEnd',()=>{saveDepPositions();});
 }
-function saveDepPositions(){if(S.netDepGraph)lsSet('dep_positions',S.netDepGraph.getPositions());}
+  function saveDepPositions(){savePosition('dep_positions',S.netDepGraph);}
 
 // ── File detail ──
 function selectFile(path){S.selectedFile=path;bumpReadCount(path);fetchFileDetail(path).then(d=>renderDetail(d));try{S.netRefTree?.selectNodes([path]);S.netRefTree?.focus(path,{scale:1.2,animation:true});}catch(e){}try{S.netDirTree?.selectNodes([path]);S.netDirTree?.focus(path,{scale:1.2,animation:true});}catch(e){}try{S.netDepGraph?.selectNodes([path]);S.netDepGraph?.focus(path,{scale:1.2,animation:true});}catch(e){}}
@@ -442,10 +451,13 @@ function connectSocket(){
   S.socket.on('project_switched',data=>{handleProjectSwitched(data);});
 }
 async function api(u){const r=await fetch(u);return r.json();}
+async function loadPositionsFallback(){
+  try{const r=await fetch('/api/positions/load');const d=await r.json();for(const[k,v]of Object.entries(d)){if(Object.keys(v||{}).length>0)lsSet(k,v);}}catch(e){}
+}
 async function initAll(){
   await loadProjects();
   try{const st=await api('/api/status');updateStats(st);document.getElementById('footer-path').textContent=st.project_root||'—';document.getElementById('footer-watching').textContent=st.watching?'👁 监听中':'⏸ 暂停';document.getElementById('no-project-state').style.display='none';document.getElementById('app').style.display='flex';}catch(e){}
-  await fetchFiles();await fetchGraph();renderAll();
+  await fetchFiles();await fetchGraph();await loadPositionsFallback();renderAll();
 }
 async function fetchFiles(){S.files=await api('/api/files');computeStaleMap();applyAfterData();}
 async function fetchGraph(){S.graphData=await api('/api/graph');computeStaleMap();applyAfterData();}
