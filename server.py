@@ -665,6 +665,38 @@ def api_positions_load():
     return jsonify(proj.get("positions", {}))
 
 
+# ── Settings ──────────────────────────────────────────────────
+@app.route("/api/settings/load")
+def api_settings_load():
+    if active_project is None:
+        return jsonify({})
+    proj = get_project_config(_config, active_project)
+    if not proj:
+        return jsonify({})
+    return jsonify({
+        "file_classes": proj.get("file_classes", {}),
+        "excluded_dirs": proj.get("excluded_dirs", []),
+        "display_mode": proj.get("display_mode", "full"),
+        "ref_roots": proj.get("ref_roots", []),
+        "active_root": proj.get("active_root", None),
+    })
+
+
+@app.route("/api/settings/save", methods=["POST"])
+def api_settings_save():
+    if active_project is None:
+        return jsonify({"success": False}), 400
+    proj = get_project_config(_config, active_project)
+    if not proj:
+        return jsonify({"success": False}), 400
+    data = request.get_json(force=True)
+    for key in ("file_classes", "excluded_dirs", "display_mode", "ref_roots", "active_root"):
+        if key in data:
+            proj[key] = data[key]
+    save_config(_config)
+    return jsonify({"success": True})
+
+
 def run_server():
     """Start the mindx server."""
     init_engine()

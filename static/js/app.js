@@ -40,6 +40,7 @@ function setClassification(path, cls) {
   if (!cls || cls === 'default') { delete overrides[path]; }
   else { overrides[path] = cls; }
   lsSet('file_classes', overrides);
+  const s=getSettings();s.file_classes=overrides;saveSettings(s);
 }
 function isBaseFile(p) { return getClassification(p) === 'base'; }
 function isStandaloneFile(p) { return getClassification(p) === 'standalone'; }
@@ -291,9 +292,15 @@ function initDragSelect(){
 }
 
 // ── Settings ──
-function loadSettings(){const def={displayMode:'full',refRoots:[],activeRoot:null,excludedDirs:[]};const s=lsGet('settings')||def;for(const k of Object.keys(def))if(!(k in s))s[k]=def[k];return s;}
-function saveSettings(s){lsSet('settings',s);}
-function getSettings(){return loadSettings();}
+let _settingsCache=null;
+async function loadSettings(){
+  try{const r=await fetch('/api/settings/load');const data=await r.json();_settingsCache={file_classes:data.file_classes||{},excludedDirs:data.excluded_dirs||[],displayMode:data.display_mode||'full',refRoots:data.ref_roots||[],activeRoot:data.active_root||null};lsSet('settings',_settingsCache);return _settingsCache;}catch(e){return lsGet('settings')||{displayMode:'full',refRoots:[],activeRoot:null,excludedDirs:[],file_classes:{}};}
+}
+function saveSettings(s){
+  _settingsCache=s;lsSet('settings',s);
+  fetch('/api/settings/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({file_classes:s.file_classes,excluded_dirs:s.excludedDirs,display_mode:s.displayMode,ref_roots:s.refRoots,active_root:s.activeRoot})}).catch(()=>{});
+}
+function getSettings(){return _settingsCache||lsGet('settings')||{displayMode:'full',refRoots:[],activeRoot:null,excludedDirs:[],file_classes:{}};}
 function computeReachable(rootPath){const visited=new Set();if(!rootPath||!S.graphData)return visited;const queue=[rootPath];while(queue.length){const cur=queue.shift();if(visited.has(cur))continue;visited.add(cur);for(const e of S.graphData.edges||[]){if(e.from===cur&&!visited.has(e.to))queue.push(e.to);}}S.reachableSet=visited;return visited;}
 function showSettings(){
   const s=getSettings();
@@ -453,6 +460,7 @@ async function loadPositionsFallback(){
 }
 async function initAll(){
   await loadProjects();
+  await loadSettings();
   try{const st=await api('/api/status');updateStats(st);document.getElementById('footer-path').textContent=st.project_root||'—';document.getElementById('footer-watching').textContent=st.watching?'👁 监听中':'⏸ 暂停';document.getElementById('no-project-state').style.display='none';document.getElementById('app').style.display='flex';}catch(e){}
   await fetchFiles();await fetchGraph();await loadPositionsFallback();renderAll();
 }
@@ -460,7 +468,7 @@ async function fetchFiles(){S.files=await api('/api/files');computeStaleMap();ap
 async function fetchGraph(){S.graphData=await api('/api/graph');computeStaleMap();applyAfterData();}
 function applyAfterData(){const s=getSettings();if(s.displayMode==='ref'&&s.activeRoot)computeReachable(s.activeRoot);renderAll();}
 function updateStats(st){if(st&&st.stats)document.getElementById('file-count').textContent=(st.stats.total_files||0)+' 文件 · '+(st.stats.total_edges||0)+' 边';if(st&&st.project_root)document.getElementById('footer-path').textContent=st.project_root;}
-function handleProjectSwitched(data){S.activeProject={name:data.name,root:data.root};S.files=data.files||[];S.graphData=data.graph||null;computeStaleMap();const s=getSettings();if(s.displayMode==='ref'&&s.activeRoot)computeReachable(s.activeRoot);else S.reachableSet=new Set();renderProjectTabs();renderAll();updateStats(data);showToast('已切换到项目：'+data.name);}
+async function handleProjectSwitched(data){S.activeProject={name:data.name,root:data.root};await loadSettings();S.files=data.files||[];S.graphData=data.graph||null;computeStaleMap();const s=getSettings();if(s.displayMode==='ref'&&s.activeRoot)computeReachable(s.activeRoot);else S.reachableSet=new Set();renderProjectTabs();renderAll();updateStats(data);showToast('已切换到项目：'+data.name);}
 
 // ── Project management ──
 async function loadProjects(){const resp=await fetch('/api/projects');const data=await resp.json();S.projects=data;renderProjectTabs();if(S.projects.length>0&&!S.activeProject)selectProject(S.projects[0].name);}

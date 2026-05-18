@@ -210,7 +210,7 @@ def add_project(config: dict, name: str, root: str) -> dict:
         if Path(proj.get("root", "")).resolve() == root_path:
             return proj  # already exists, return existing
 
-    proj = {"name": name, "root": root_str, "external_paths": [], "positions": {}}
+    proj = {"name": name, "root": root_str, "external_paths": [], "positions": {}, "file_classes": {}, "excluded_dirs": [], "display_mode": "full", "ref_roots": [], "active_root": None}
     config.setdefault("projects", []).append(proj)
     return proj
 
