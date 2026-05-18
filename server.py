@@ -635,18 +635,25 @@ def api_rename_execute():
     old_basename = Path(old_path).name
     new_basename = Path(new_path).name
 
-    # 1. Update all referencing files (replace old name with new in markdown links)
+    # 1. Update all referencing files (replace old link text with new in markdown)
     if old_path in engine.graph:
         for src, _, edata in list(engine.graph.in_edges(old_path, data=True)):
             abs_src = project_root / src
             if src in engine.files and abs_src.exists():
                 try:
                     content = abs_src.read_text(encoding="utf-8")
-                    # Replace old filename in markdown links: [text](old_name) → [text](new_name)
-                    pattern = r'\[([^\]]*?)\]\((' + re.escape(old_basename) + r')(\s*[^)]*)?\)'
-                    new_content = re.sub(pattern, r'[\1](' + new_basename + r')', content)
-                    if new_content != content:
-                        abs_src.write_text(new_content, encoding="utf-8")
+                    info = engine.files[src]
+                    modified = False
+                    for link in info.links:
+                        if link.target == old_path:
+                            old_text = '](' + link.raw_target + ')'
+                            new_text = '](' + Path(new_path).name + ')'
+                            newcontent = content.replace(old_text, new_text)
+                            if newcontent != content:
+                                content = newcontent
+                                modified = True
+                    if modified:
+                        abs_src.write_text(content, encoding="utf-8")
                         updated.append(src)
                 except Exception:
                     pass
@@ -655,10 +662,18 @@ def api_rename_execute():
     if old_path in engine.files and old_abs.exists():
         try:
             content = old_abs.read_text(encoding="utf-8")
-            pattern = r'\[([^\]]*?)\]\((' + re.escape(old_basename) + r')(\s*[^)]*)?\)'
-            new_content = re.sub(pattern, r'[\1](' + new_basename + r')', content)
-            if new_content != content:
-                old_abs.write_text(new_content, encoding="utf-8")
+            info = engine.files[old_path]
+            modified = False
+            for link in info.links:
+                if link.target == old_path:
+                    old_text = '](' + link.raw_target + ')'
+                    new_text = '](' + Path(new_path).name + ')'
+                    newcontent = content.replace(old_text, new_text)
+                    if newcontent != content:
+                        content = newcontent
+                        modified = True
+            if modified:
+                old_abs.write_text(content, encoding="utf-8")
         except Exception:
             pass
 
