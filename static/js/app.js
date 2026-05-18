@@ -468,17 +468,27 @@ async function handleErrorRechoose(){document.getElementById('modal-error').styl
 
 // ── Tree mode toggles ──
 function updateTreeButtons(){document.getElementById('btn-tree-ref').classList.toggle('active',S.treeMode==='ref');document.getElementById('btn-tree-dir').classList.toggle('active',S.treeMode==='dir');}
-function onFilterChange(){S.showCore=document.getElementById('chk-show-core').checked;S.showBase=document.getElementById('chk-show-base').checked;S.showStandalone=document.getElementById('chk-show-standalone').checked;S.showExternal=document.getElementById('chk-show-external').checked;S.showHidden=document.getElementById('chk-show-hidden').checked;document.querySelectorAll('#panel-left .filter-core').forEach(cb=>cb.checked=S.showCore);document.querySelectorAll('#panel-left .filter-base').forEach(cb=>cb.checked=S.showBase);document.querySelectorAll('#panel-left .filter-standalone').forEach(cb=>cb.checked=S.showStandalone);document.querySelectorAll('#panel-left .filter-external').forEach(cb=>cb.checked=S.showExternal);document.querySelectorAll('#panel-left .filter-hidden').forEach(cb=>cb.checked=S.showHidden);['chk-ref-base','chk-dir-base','chk-dep-base'].forEach(id=>{const cb=document.getElementById(id);if(cb)cb.checked=S.showBase;});['chk-ref-standalone','chk-dir-standalone','chk-dep-standalone'].forEach(id=>{const cb=document.getElementById(id);if(cb)cb.checked=S.showStandalone;});renderAll();}
+function onFilterChange(e){
+  if(e&&e.target){const id=e.target.id;if(id.includes('base'))S.showBase=e.target.checked;if(id.includes('standalone'))S.showStandalone=e.target.checked;}
+  else{S.showCore=document.getElementById('chk-show-core').checked;S.showBase=document.getElementById('chk-show-base').checked;S.showStandalone=document.getElementById('chk-show-standalone').checked;S.showExternal=document.getElementById('chk-show-external').checked;S.showHidden=document.getElementById('chk-show-hidden').checked;}
+  // Sync all checkboxes
+  document.querySelectorAll('[id*="show-core"],[id*="-core"]').forEach(cb=>cb.checked=S.showCore);
+  document.querySelectorAll('.filter-base,[id*="-base"]').forEach(cb=>cb.checked=S.showBase);
+  document.querySelectorAll('.filter-standalone,[id*="-standalone"]').forEach(cb=>cb.checked=S.showStandalone);
+  document.querySelectorAll('.filter-external').forEach(cb=>cb.checked=S.showExternal);
+  document.querySelectorAll('.filter-hidden').forEach(cb=>cb.checked=S.showHidden);
+  renderAll();
+}
 
 // ── Event listeners ──
 document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;if(e.ctrlKey&&e.key==='f'){e.preventDefault();document.getElementById('tree-filter').focus();}if(e.key==='Escape'){hideCtxMenu();hideSettings();document.getElementById('modal-confirm').style.display='none';document.getElementById('modal-error').style.display='none';}});
 document.getElementById('btn-theme').addEventListener('click',()=>{const cur=document.documentElement.getAttribute('data-theme');const next=cur==='light'?'dark':'light';document.documentElement.setAttribute('data-theme',next);document.getElementById('btn-theme').textContent=next==='light'?'☀️':'🌙';localStorage.setItem('mindx_theme',next);});
-document.querySelectorAll('.filter-core').forEach(cb=>cb.addEventListener('change',onFilterChange));
-document.querySelectorAll('.filter-base').forEach(cb=>cb.addEventListener('change',onFilterChange));
-document.querySelectorAll('.filter-standalone').forEach(cb=>cb.addEventListener('change',onFilterChange));
-document.querySelectorAll('.filter-external').forEach(cb=>cb.addEventListener('change',onFilterChange));
-document.querySelectorAll('.filter-hidden').forEach(cb=>cb.addEventListener('change',onFilterChange));
-['chk-ref-base','chk-ref-standalone','chk-dir-base','chk-dir-standalone','chk-dep-base','chk-dep-standalone'].forEach(id=>{const cb=document.getElementById(id);if(cb)cb.addEventListener('change',onFilterChange);});
+document.querySelectorAll('.filter-core').forEach(cb=>cb.addEventListener('change',e=>onFilterChange(e)));
+document.querySelectorAll('.filter-base').forEach(cb=>cb.addEventListener('change',e=>onFilterChange(e)));
+document.querySelectorAll('.filter-standalone').forEach(cb=>cb.addEventListener('change',e=>onFilterChange(e)));
+document.querySelectorAll('.filter-external').forEach(cb=>cb.addEventListener('change',e=>onFilterChange(e)));
+document.querySelectorAll('.filter-hidden').forEach(cb=>cb.addEventListener('change',e=>onFilterChange(e)));
+['chk-ref-base','chk-ref-standalone','chk-dir-base','chk-dir-standalone','chk-dep-base','chk-dep-standalone'].forEach(id=>{const cb=document.getElementById(id);if(cb)cb.addEventListener('change',e=>onFilterChange(e));});
 document.getElementById('btn-tree-ref').addEventListener('click',()=>{S.treeMode='ref';updateTreeButtons();renderFileTree();});
 document.getElementById('btn-tree-dir').addEventListener('click',()=>{S.treeMode='dir';updateTreeButtons();renderFileTree();});
 document.getElementById('btn-tree-select').addEventListener('click',toggleSelectMode);
