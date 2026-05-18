@@ -878,6 +878,7 @@ html, body {
 .ctx-item:hover { background: var(--bg-hover); color: var(--accent); }
 .ctx-sep { height: 1px; background: var(--border); margin: 4px 0; }
 .ctx-danger:hover { color: var(--red) !important; background: #3d1f1c; }
+.ctx-item code { font-family: var(--font-mono); font-size: 10px; }
 
 /* ── Drag selection box ────────────────────────── */
 .drag-box {

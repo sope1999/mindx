@@ -3,6 +3,7 @@
 import os
 import sys
 import json
+import re
 import time
 import threading
 from pathlib import Path
@@ -531,6 +532,153 @@ def api_external_list():
                 "exists": ndata.get("exists", False),
             })
     return jsonify(externals)
+
+
+@app.route("/api/file/rename-preview", methods=["POST"])
+def api_rename_preview():
+    """Preview what files would change if a file is renamed."""
+    if active_project is None:
+        return jsonify({"success": False, "error": "No active project"}), 400
+    data = request.get_json(force=True)
+    old_path = data.get("path", "").strip()
+    new_name = data.get("new_name", "").strip()
+    if not old_path or not new_name:
+        return jsonify({"success": False, "error": "path and new_name required"}), 400
+    if not new_name.endswith(".md"):
+        new_name += ".md"
+
+    proj = get_project_config(_config, active_project)
+    project_root = Path(proj["root"]) if proj else Path(".")
+
+    # Validate old file exists
+    old_abs = project_root / old_path
+    if not old_abs.exists():
+        return jsonify({"success": False, "error": f"File not found: {old_path}"}), 400
+
+    # Build new path (same directory, new filename)
+    old_dir = str(Path(old_path).parent)
+    new_rel = (old_dir + "/" + new_name).replace("\\", "/").lstrip("/")
+    new_abs = project_root / new_rel
+
+    if new_abs.exists():
+        return jsonify({"success": False, "error": f"Target already exists: {new_rel}"}), 400
+
+    engine = engines.get(active_project)
+    if not engine:
+        return jsonify({"success": False, "error": "No engine"}), 500
+
+    # Find files that reference this one (incoming edges in graph)
+    referencing = []
+    if old_path in engine.graph:
+        for src, _, edata in engine.graph.in_edges(old_path, data=True):
+            if src in engine.files:
+                referencing.append(src)
+
+    # Also find self-references from the file itself
+    if old_path in engine.files:
+        referencing.append(old_path)
+
+    # For each referencing file, find which links point to the old file
+    # and show what the new link text would be
+    changes = []
+    for ref_file in referencing:
+        if ref_file not in engine.files:
+            continue
+        info = engine.files[ref_file]
+        file_changes = []
+        for link in info.links:
+            if link.target == old_path:
+                file_changes.append({
+                    "old_link": link.raw_target,
+                    "new_link": new_name,  # same dir, just new filename
+                    "context": link.context[:80],
+                })
+        if file_changes:
+            changes.append({"file": ref_file, "changes": file_changes})
+
+    return jsonify({
+        "success": True,
+        "old_path": old_path,
+        "new_path": new_rel,
+        "affected_count": len(changes),
+        "changes": changes,
+    })
+
+
+@app.route("/api/file/rename-execute", methods=["POST"])
+def api_rename_execute():
+    """Execute file rename and update all references."""
+    if active_project is None:
+        return jsonify({"success": False, "error": "No active project"}), 400
+    data = request.get_json(force=True)
+    old_path = data.get("path", "").strip()
+    new_path = data.get("new_path", "").strip()
+    if not old_path or not new_path:
+        return jsonify({"success": False, "error": "path and new_path required"}), 400
+
+    proj = get_project_config(_config, active_project)
+    project_root = Path(proj["root"]) if proj else Path(".")
+
+    old_abs = project_root / old_path
+    new_abs = project_root / new_path
+
+    if not old_abs.exists():
+        return jsonify({"success": False, "error": f"File not found: {old_path}"}), 400
+    if new_abs.exists():
+        return jsonify({"success": False, "error": f"Target exists: {new_path}"}), 400
+
+    engine = engines.get(active_project)
+    if not engine:
+        return jsonify({"success": False, "error": "No engine"}), 500
+
+    updated = []
+    old_basename = Path(old_path).name
+    new_basename = Path(new_path).name
+
+    # 1. Update all referencing files (replace old name with new in markdown links)
+    if old_path in engine.graph:
+        for src, _, edata in list(engine.graph.in_edges(old_path, data=True)):
+            abs_src = project_root / src
+            if src in engine.files and abs_src.exists():
+                try:
+                    content = abs_src.read_text(encoding="utf-8")
+                    # Replace old filename in markdown links: [text](old_name) → [text](new_name)
+                    pattern = r'\[([^\]]*?)\]\((' + re.escape(old_basename) + r')(\s*[^)]*)?\)'
+                    new_content = re.sub(pattern, r'[\1](' + new_basename + r')', content)
+                    if new_content != content:
+                        abs_src.write_text(new_content, encoding="utf-8")
+                        updated.append(src)
+                except Exception:
+                    pass
+
+    # 2. Update the file itself (self-references)
+    if old_path in engine.files and old_abs.exists():
+        try:
+            content = old_abs.read_text(encoding="utf-8")
+            pattern = r'\[([^\]]*?)\]\((' + re.escape(old_basename) + r')(\s*[^)]*)?\)'
+            new_content = re.sub(pattern, r'[\1](' + new_basename + r')', content)
+            if new_content != content:
+                old_abs.write_text(new_content, encoding="utf-8")
+        except Exception:
+            pass
+
+    # 3. Rename file on disk
+    try:
+        old_abs.rename(new_abs)
+    except Exception as e:
+        return jsonify({"success": False, "error": f"Rename failed: {e}"}), 500
+
+    # 4. Re-scan the affected files
+    for f in updated:
+        engine.update_file(f, "modified")
+    engine.update_file(new_path, "created")
+
+    return jsonify({
+        "success": True,
+        "old_path": old_path,
+        "new_path": new_path,
+        "updated_files": updated,
+    })
 
 
 # ── Startup ─────────────────────────────────────────────────

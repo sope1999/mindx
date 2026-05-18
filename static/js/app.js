@@ -231,10 +231,11 @@ let _ctxMenu=null;
 function initCtxMenu(){
   if(_ctxMenu)return;
   _ctxMenu=document.createElement('div');_ctxMenu.id='ctx-menu';_ctxMenu.className='ctx-menu';
-  _ctxMenu.innerHTML='<div class="ctx-item" data-action="hide">🔇 隐藏此文件</div><div class="ctx-item" data-action="unhide">🔊 取消隐藏</div><div class="ctx-sep"></div><div class="ctx-item ctx-danger" data-action="remove">🗑 移除此文件</div><div class="ctx-item" data-action="restore">↩ 恢复此文件</div><div class="ctx-sep ctx-batch-sep" style="display:none"></div><div class="ctx-item ctx-batch" data-action="batch-hide" style="display:none">🔇 隐藏已选</div><div class="ctx-item ctx-batch" data-action="batch-unhide" style="display:none">🔊 取消隐藏已选</div><div class="ctx-item ctx-danger ctx-batch" data-action="batch-remove" style="display:none">🗑 移除已选</div><div class="ctx-item ctx-batch" data-action="batch-restore" style="display:none">↩ 恢复已选</div>';
+  _ctxMenu.innerHTML='<div class="ctx-item" data-action="hide">🔇 隐藏此文件</div><div class="ctx-item" data-action="unhide">🔊 取消隐藏</div><div class="ctx-sep"></div><div class="ctx-item" data-action="rename">✏ 重命名</div><div class="ctx-item ctx-danger" data-action="remove">🗑 移除此文件</div><div class="ctx-item" data-action="restore">↩ 恢复此文件</div><div class="ctx-sep ctx-batch-sep" style="display:none"></div><div class="ctx-item ctx-batch" data-action="batch-hide" style="display:none">🔇 隐藏已选</div><div class="ctx-item ctx-batch" data-action="batch-unhide" style="display:none">🔊 取消隐藏已选</div><div class="ctx-item ctx-danger ctx-batch" data-action="batch-remove" style="display:none">🗑 移除已选</div><div class="ctx-item ctx-batch" data-action="batch-restore" style="display:none">↩ 恢复已选</div>';
   _ctxMenu.addEventListener('click',e=>{const act=e.target.closest('.ctx-item')?.dataset.action;const p=_ctxMenu._filePath;if(!act||!p)return;hideCtxMenu();
     if(act==='hide'){setClassification(p,'hidden');}
     else if(act==='unhide'){setClassification(p,'default');}
+    else if(act==='rename'){showRenameDialog(p);}
     else if(act==='remove'){removeFileFromMindx(p);}
     else if(act==='restore'){restoreFileToMindx(p);}
     else if(act==='batch-hide'){batchAction('hide');}
@@ -259,6 +260,42 @@ function showCtxMenu(x,y,filePath){
   _ctxMenu.style.left=x+'px';_ctxMenu.style.top=y+'px';_ctxMenu.classList.add('show');
 }
 function hideCtxMenu(){if(_ctxMenu)_ctxMenu.classList.remove('show');}
+async function showRenameDialog(path){
+  hideCtxMenu();
+  const oldName=baseName(path);
+  const newName=prompt('重命名文件：\n\n当前：'+oldName+'\n\n输入新文件名（同目录）：',oldName);
+  if(!newName||newName===oldName)return;
+  // Preview changes
+  try{
+    const r=await fetch('/api/file/rename-preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:path,new_name:newName})});
+    const d=await r.json();
+    if(!d.success){alert(d.error||'预览失败');return;}
+    if(d.changes.length===0){alert('没有文件引用此文件，可以直接重命名。请在文件管理器中操作。');return;}
+    // Show preview modal
+    let html='<p>将 <strong>'+oldName+'</strong> 重命名为 <strong>'+d.new_path.split('/').pop()+'</strong></p>';
+    html+='<p style="color:var(--yellow)">将修改以下文件中的引用：</p><ul>';
+    for(const c of d.changes){
+      html+='<li><strong>'+baseName(c.file)+'</strong><ul>';
+      for(const lc of c.changes){
+        html+='<li><code>'+lc.old_link+'</code> → <code>'+lc.new_link+'</code> <span style="color:var(--text-dim)">'+lc.context+'</span></li>';
+      }
+      html+='</ul></li>';
+    }
+    html+='</ul>';
+    showModal('✏ 重命名预览',html,[
+      {label:'取消',cls:'btn',action:()=>hideModal()},
+      {label:'确认重命名',cls:'btn-primary',action:async()=>{
+        hideModal();
+        const r2=await fetch('/api/file/rename-execute',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:path,new_path:d.new_path})});
+        const d2=await r2.json();
+        if(d2.success){
+          showToast('已重命名：'+oldName+' → '+d2.new_path.split('/').pop());
+          fetchFiles();fetchGraph().then(()=>{renderAll();});
+        }else{alert('重命名失败：'+(d2.error||'未知错误'));}
+      }}
+    ]);
+  }catch(e){alert('预览失败：'+e.message);}
+}
 function removeFileFromMindx(path){
   if(!confirm('确定将此文件从 mindx 管理中移除？\n\n'+path+'\n\n移除后可在项目设置 → 排除目录中恢复。'))return;
   const s=getSettings();if(!s.excludedDirs.includes(path)){s.excludedDirs.push(path);saveSettings(s);}
