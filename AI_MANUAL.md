@@ -3,6 +3,17 @@
 > This document is the single source of truth for AI agents working on mindx.
 > Last verified against source: 2026-05-18.
 
+## Contents
+
+1. [Project Overview](#1-project-overview)
+2. [File Map](#2-file-map)
+3. [API Reference](#3-api-reference)
+4. [Data Flow](#4-data-flow)
+5. [Frontend Architecture](#5-frontend-architecture)
+6. [Modification Guide](#6-modification-guide)
+7. [Gotchas & Conventions](#7-gotchas--conventions)
+8. [Git Workflow](#8-git-workflow)
+
 ---
 
 ## 1. Project Overview
