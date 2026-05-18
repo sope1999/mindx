@@ -8,102 +8,137 @@ projects:
   positions:
     dep_positions:
       AGENTS.md:
-        x: -316
-        y: -321
+        x: -307
+        y: -299
       HEARTBEAT.md:
-        x: -157
-        y: -280
+        x: -161
+        y: -245
       IDENTITY.md:
-        x: 55
-        y: -350
+        x: 60
+        y: -306
       MEMORY.md:
-        x: -9
-        y: 117
+        x: 16
+        y: 68
       SOUL.md:
-        x: 269
-        y: -320
-      TOOLS.md:
-        x: -242
-        y: 64
-      urls.md:
-        x: -147
-        y: -61
+        x: 252
+        y: -290
       USER.md:
-        x: 400
-        y: -223
-      任务工作规则.md:
-        x: 96
-        y: -79
-      项目开发工作规则.md:
-        x: 190
-        y: -11
-      项目开发管理方案.md:
-        x: 436
-        y: 18
+        x: 379
+        y: -182
       memory/archive/_index.md:
-        x: 138
-        y: 311
+        x: 150
+        y: 265
       memory/projects/_index.md:
-        x: 0
-        y: -141
+        x: 59
+        y: -153
       memory/tools/claude-code.md:
-        x: -155
-        y: 302
+        x: -136
+        y: 243
       memory/tools/cron.md:
-        x: 232
-        y: 158
+        x: 251
+        y: 96
       memory/tools/napcat.md:
-        x: 51
-        y: 348
+        x: 57
+        y: 300
       memory/tools/opencode.md:
-        x: -47
-        y: 355
+        x: -36
+        y: 297
       memory/tools/ragflow.md:
-        x: -212
-        y: -7
+        x: -190
+        y: -34
       memory/tools/search.md:
-        x: 226
-        y: 72
+        x: 232
+        y: -3
       memory/tools/system.md:
-        x: -208
-        y: 232
+        x: -192
+        y: 161
       memory/tools/urls.md:
-        x: 94
-        y: 183
+        x: 92
+        y: 146
       memory/tools/vcp.md:
-        x: 203
-        y: 242
+        x: 221
+        y: 190
       memory/tools/warning.md:
-        x: -240
-        y: 145
+        x: -216
+        y: 61
       memory/tools/full/claude-code-full.md:
-        x: -371
-        y: 206
+        x: -350
+        y: 160
       memory/tools/full/opencode-full.md:
-        x: -268
-        y: 397
+        x: -250
+        y: 356
       memory/projects/aviation/dev-sessions-old.md:
-        x: -321
-        y: -212
+        x: -279
+        y: -165
       memory/projects/aviation/dev-sessions.md:
-        x: -105
-        y: -156
+        x: -64
+        y: -97
       memory/projects/aviation/overview.md:
-        x: -129
-        y: -367
+        x: -98
+        y: -321
       memory/projects/aviation/PROJECT_PROGRESS.md:
-        x: 75
-        y: -464
+        x: 109
+        y: -406
       memory/projects/transforman/overview.md:
-        x: 240
-        y: -145
-      claude/ubuclaude/claude会话清单.md:
-        x: 113
-        y: -240
+        x: 276
+        y: -107
   file_classes: {}
   excluded_dirs:
   - C:/SOFT/AI/coder/temp/
   - C:/SOFT/AI/coder/temp_docs/
+  - memory/2026-04-02-design-outline.md
+  - memory/2026-04-02-doc-review.md
+  - memory/2026-04-02-doc-update.md
+  - memory/2026-04-02-request-timed-out-before-a-res.md
+  - memory/2026-04-02-requirements-docs.md
+  - memory/2026-04-02-spec-revision.md
+  - memory/2026-03-28-identity-setup.md
+  - memory/2026-03-29-server-selection.md
+  - memory/2026-03-30.md
+  - memory/2026-04-02-api-requirements-review.md
+  - memory/2026-04-02-api-requirements.md
+  - memory/2026-04-02-api-review.md
+  - memory/2026-04-02-api-spec-review.md
+  - memory/2026-04-02-ban-timing-risk.md
+  - memory/2026-04-02-tech-selection.md
+  - memory/2026-04-02.md
+  - memory/2026-04-03-api-doc-simplify.md
+  - memory/2026-04-03-doc-review.md
+  - memory/2026-04-03-request-timed-out-before-a-res.md
+  - memory/2026-04-03-requirements-doc.md
+  - memory/2026-04-04-document-review-update.md
+  - memory/2026-04-04-project-planning.md
+  - memory/2026-04-04-ui-prototype-v18-update.md
+  - memory/2026-04-04.md
+  - memory/2026-04-05-cloud-server-setup-guide.md
+  - memory/2026-04-05-dev-project-management.md
+  - memory/2026-04-05-persistent-session-spawn.md
+  - memory/2026-04-05-persistent-subagent-test.md
+  - memory/2026-04-05-ragflow-deployment-security.md
+  - memory/2026-04-05-subagent-config-violation.md
+  - memory/2026-04-05-tools-agents-refactor.md
+  - memory/2026-04-05-wsl2-path-mapping.md
+  - memory/2026-04-05.md
+  - memory/2026-04-06-agents-md-section-restructure.md
+  - memory/2026-04-06-auth-module-verification.md
+  - memory/2026-04-06-ban-module-risk-assessment.md
+  - memory/2026-04-06-claude-code-dev-rules.md
+  - memory/2026-04-06-claude-code-workflow-update.md
+  - memory/2026-04-06-conversation-module-dev.md
+  - memory/2026-04-06-memory-decision-index.md
+  - memory/2026-04-06-project-dev-rules-review.md
+  - memory/2026-04-06-project-progress-update.md
+  - memory/2026-04-06-request-timed-out-before-a-res.md
+  - memory/2026-04-06.md
+  - memory/2026-04-07-backend-manual-review.md
+  - memory/2026-04-07-red-lines-implement.md
+  - memory/2026-04-07.md
+  - memory/2026-04-08-haskell-queens-v2.md
+  - memory/2026-04-13-claude-parallel-subagents.md
+  - memory/2026-04-22-vcp-status.md
+  - memory/2026-04-22-vcp-urls.md
+  - memory/2026-04-25-vcp-setup.md
+  - memory/2026-05-07-vcp-bridge.md
   display_mode: full
   ref_roots: []
   active_root: null
