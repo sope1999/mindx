@@ -8,80 +8,174 @@ projects:
   positions:
     dep_positions:
       AGENTS.md:
-        x: -307
-        y: -299
+        x: -399
+        y: -209
       HEARTBEAT.md:
-        x: -161
-        y: -245
+        x: -233
+        y: -374
       IDENTITY.md:
-        x: 60
-        y: -306
-      MEMORY.md:
-        x: 16
-        y: 68
-      SOUL.md:
-        x: 252
-        y: -290
-      USER.md:
-        x: 379
-        y: -182
-      memory/archive/_index.md:
-        x: 150
-        y: 265
-      memory/projects/_index.md:
         x: 59
-        y: -153
-      memory/tools/claude-code.md:
-        x: -136
-        y: 243
-      memory/tools/cron.md:
-        x: 251
-        y: 96
-      memory/tools/napcat.md:
-        x: 57
-        y: 300
-      memory/tools/opencode.md:
-        x: -36
+        y: -347
+      MEMORY.md:
+        x: -18
+        y: 98
+      SOUL.md:
+        x: 278
+        y: -336
+      TOOLS.md:
+        x: -228
+        y: -15
+      urls.md:
+        x: -173
+        y: -75
+      USER.md:
+        x: 452
+        y: -9
+      任务工作规则.md:
+        x: -94
+        y: -118
+      项目开发工作规则.md:
+        x: 164
+        y: -38
+      项目开发管理方案.md:
+        x: 401
+        y: -183
+      memory/archive/_index.md:
+        x: 122
         y: 297
+      memory/projects/_index.md:
+        x: 65
+        y: -142
+      memory/tools/claude-code.md:
+        x: -153
+        y: 292
+      memory/tools/cron.md:
+        x: 219
+        y: 157
+      memory/tools/napcat.md:
+        x: 41
+        y: 330
+      memory/tools/opencode.md:
+        x: -49
+        y: 338
       memory/tools/ragflow.md:
-        x: -190
-        y: -34
+        x: -254
+        y: 58
       memory/tools/search.md:
-        x: 232
-        y: -3
+        x: 216
+        y: 69
       memory/tools/system.md:
-        x: -192
-        y: 161
+        x: -210
+        y: 224
       memory/tools/urls.md:
-        x: 92
-        y: 146
+        x: 71
+        y: 166
       memory/tools/vcp.md:
-        x: 221
-        y: 190
+        x: 185
+        y: 236
       memory/tools/warning.md:
-        x: -216
-        y: 61
+        x: -248
+        y: 138
       memory/tools/full/claude-code-full.md:
-        x: -350
-        y: 160
+        x: -374
+        y: 215
       memory/tools/full/opencode-full.md:
-        x: -250
-        y: 356
+        x: -262
+        y: 406
       memory/projects/aviation/dev-sessions-old.md:
-        x: -279
-        y: -165
+        x: -246
+        y: -227
       memory/projects/aviation/dev-sessions.md:
-        x: -64
-        y: -97
+        x: -19
+        y: -171
       memory/projects/aviation/overview.md:
-        x: -98
-        y: -321
+        x: -71
+        y: -366
       memory/projects/aviation/PROJECT_PROGRESS.md:
-        x: 109
-        y: -406
+        x: 137
+        y: -448
       memory/projects/transforman/overview.md:
-        x: 276
-        y: -107
+        x: 292
+        y: -68
+      claude/ubuclaude/claude会话清单.md:
+        x: 207
+        y: -216
+    reftree_positions:
+      AGENTS.md:
+        x: -285
+        y: -147
+      HEARTBEAT.md:
+        x: -194
+        y: -222
+      IDENTITY.md:
+        x: -88
+        y: -281
+      MEMORY.md:
+        x: 1
+        y: 12
+      SOUL.md:
+        x: 43
+        y: -294
+      USER.md:
+        x: 181
+        y: -245
+      memory/archive/_index.md:
+        x: -60
+        y: 157
+      memory/projects/_index.md:
+        x: 105
+        y: 145
+      memory/tools/claude-code.md:
+        x: -158
+        y: 21
+      memory/tools/cron.md:
+        x: 142
+        y: -59
+      memory/tools/napcat.md:
+        x: 23
+        y: 166
+      memory/tools/opencode.md:
+        x: -131
+        y: 108
+      memory/tools/ragflow.md:
+        x: 12
+        y: -148
+      memory/tools/search.md:
+        x: 92
+        y: -124
+      memory/tools/system.md:
+        x: -139
+        y: -63
+      memory/tools/urls.md:
+        x: -253
+        y: 158
+      memory/tools/vcp.md:
+        x: 151
+        y: 44
+      memory/tools/warning.md:
+        x: -74
+        y: -126
+      memory/tools/full/claude-code-full.md:
+        x: -305
+        y: 14
+      memory/tools/full/opencode-full.md:
+        x: -146
+        y: 260
+      memory/projects/aviation/dev-sessions-old.md:
+        x: 356
+        y: 16
+      memory/projects/aviation/dev-sessions.md:
+        x: 244
+        y: -59
+      memory/projects/aviation/overview.md:
+        x: 251
+        y: 111
+      memory/projects/aviation/PROJECT_PROGRESS.md:
+        x: 183
+        y: 247
+      memory/projects/transforman/overview.md:
+        x: 36
+        y: 288
   file_classes: {}
   excluded_dirs:
   - C:/SOFT/AI/coder/temp/
@@ -142,203 +236,3 @@ projects:
   display_mode: full
   ref_roots: []
   active_root: null
-- name: buding
-  root: C:\SOFT\AI\buding
-  external_paths: []
-  positions:
-    dep_positions:
-      AGENTS.md:
-        x: -505
-        y: -430
-      HEARTBEAT.md:
-        x: -324
-        y: -569
-      IDENTITY.md:
-        x: -11
-        y: -638
-      MEMORY.md:
-        x: 426
-        y: 115
-      SOUL.md:
-        x: 295
-        y: -575
-      TOOLS.md:
-        x: -208
-        y: -543
-      urls.md:
-        x: 155
-        y: -559
-      USER.md:
-        x: 486
-        y: -454
-      memory/2026-03-16-napcat-qq-login-setup.md:
-        x: -1
-        y: 379
-      memory/2026-03-17.md:
-        x: -94
-        y: 656
-      memory/2026-03-18-claude-api-pricing.md:
-        x: -59
-        y: 189
-      memory/2026-03-18-ragflow-knowledgebase-setup.md:
-        x: 84
-        y: 271
-      memory/2026-03-18-sister-accounts.md:
-        x: 583
-        y: 136
-      memory/2026-03-18.md:
-        x: -609
-        y: 252
-      memory/2026-03-19-napcat-multi-account.md:
-        x: -401
-        y: 98
-      memory/2026-03-19-solidworks-linear-sketch-array.md:
-        x: -496
-        y: -220
-      memory/2026-03-19-sunflower-launch.md:
-        x: -184
-        y: -425
-      memory/2026-03-20-budings-network-access-control.md:
-        x: -287
-        y: 200
-      memory/2026-03-20-english-vocabulary-translation.md:
-        x: 422
-        y: -351
-      memory/2026-03-20-model-switch-check.md:
-        x: -43
-        y: -350
-      memory/2026-03-20-openclaw-per-channel-model.md:
-        x: 179
-        y: 642
-      memory/2026-03-20-tailscale-one-way-access.md:
-        x: -609
-        y: -147
-      memory/2026-03-24-buldak-noodle-chat.md:
-        x: -157
-        y: 306
-      memory/2026-03-24-flight-dispatch-duty.md:
-        x: -244
-        y: 453
-      memory/2026-03-24-model-inquiry.md:
-        x: -595
-        y: 111
-      memory/2026-03-24-new-session-greeting.md:
-        x: 126
-        y: -413
-      memory/2026-03-24-wheel-mod-registration.md:
-        x: -93
-        y: -197
-      memory/2026-03-25-deepseek-milestone.md:
-        x: 370
-        y: 241
-      memory/2026-03-27-flight-telegram.md:
-        x: 341
-        y: -11
-      memory/2026-03-27-request-timed-out-before-a-res.md:
-        x: -418
-        y: -46
-      memory/2026-03-28-mysql-workbench.md:
-        x: 227
-        y: 296
-      memory/2026-03-30-agent-communication.md:
-        x: -240
-        y: 613
-      memory/2026-03-30-agent-identity.md:
-        x: -574
-        y: -13
-      memory/2026-03-30-first-meeting.md:
-        x: 375
-        y: 560
-      memory/2026-03-30-greeting-intro.md:
-        x: 244
-        y: 91
-      memory/2026-03-31-feishu-setup.md:
-        x: 36
-        y: 611
-      memory/2026-04-02-api-review.md:
-        x: -25
-        y: -507
-      memory/2026-04-02-feishu-config.md:
-        x: 254
-        y: -115
-      memory/2026-04-02-feishu-id.md:
-        x: 517
-        y: 407
-      memory/2026-04-02-health-check.md:
-        x: 120
-        y: 127
-      memory/2026-04-02-model-speed-comparison.md:
-        x: -338
-        y: 340
-      memory/2026-04-02-request-timed-out-before-a-res.md:
-        x: -341
-        y: -232
-      memory/2026-04-02-service-agreement-update.md:
-        x: 141
-        y: -178
-      memory/2026-04-02-token-rotation.md:
-        x: 124
-        y: 466
-      memory/2026-04-03-agent-status.md:
-        x: -469
-        y: 256
-      memory/2026-04-04-doc-review-v17.md:
-        x: 68
-        y: -271
-      memory/2026-04-04-model-config-change.md:
-        x: 588
-        y: 7
-      memory/2026-04-05-1514.md:
-        x: -221
-        y: -296
-      memory/2026-04-05-subagent-heartbeat-flood.md:
-        x: 622
-        y: -131
-      memory/2026-04-05-subagent-session-control.md:
-        x: 527
-        y: -246
-      memory/2026-04-05-wangcai-claude-code-review.md:
-        x: -384
-        y: 536
-      memory/2026-04-05.md:
-        x: 260
-        y: 487
-      memory/2026-04-06-request-timed-out-before-a-res.md:
-        x: -216
-        y: 76
-      memory/2026-04-07-backend-manual-review.md:
-        x: -129
-        y: -68
-      memory/2026-04-07-manual-review-report.md:
-        x: 455
-        y: -102
-      memory/2026-04-08-glm-4-6v-image-model-config.md:
-        x: 584
-        y: 266
-      memory/2026-04-08-request-timed-out-before-a-res.md:
-        x: 382
-        y: 382
-      memory/2026-04-18-alternate-airport-landing-stan.md:
-        x: 75
-        y: -41
-      memory/2026-04-20-delta-force.md:
-        x: -491
-        y: 419
-      memory/2026-04-21-company-bankruptcy-fine.md:
-        x: -92
-        y: 484
-      memory/2026-04-21-request-timed-out-before-a-res.md:
-        x: -45
-        y: 49
-      memory/2026-04-22.md:
-        x: 321
-        y: -246
-      memory/2026-04-28-heartbeat-check.md:
-        x: 276
-        y: -405
-      memory/2026-04-28-request-timed-out-before-a-res.md:
-        x: -410
-        y: -361
-      memory/2026-04-30.md:
-        x: -284
-        y: -93

@@ -316,7 +316,7 @@ Markdown 链接 `[→](path)` 被 parser 自动解析。纯文本引用通过 `i
 新：config.yaml (配置驱动) → engines{} 字典 → watchers{} 字典 → per-project 管理
 ```
 
-> 最后更新：2026-05-16 | 当前版本：v4.2
+> 最后更新：2026-05-17 | 当前版本：v4.3
 
 ---
 
@@ -430,3 +430,47 @@ _index.md ──→ overview.md ──→ PROJECT_PROGRESS.md
 | 快捷键 | `Ctrl+F` 聚焦搜索、`Esc` 关闭弹窗/菜单 |
 | 目录树图重绘 | 手工坐标算法替代 vis.js 层级布局：父节点居中、子目录比例分宽、文件横排 |
 | 文件监听修复 | `watching: False` → 清理 `__pycache__` + 强制重启恢复 |
+
+---
+
+## 十一、v4.3 — 配置持久化 + 稳定性修复
+
+**日期**：2026-05-17
+
+### 设置持久化迁移
+
+分类覆写、排除目录、显示模式、根文件设置从 localStorage 迁到 `config.yaml`：
+
+| 数据 | 旧存储 | 新存储 |
+|------|--------|--------|
+| `file_classes` | localStorage | `config.yaml` 每项目 |
+| `excluded_dirs` | localStorage | `config.yaml` 每项目 |
+| `display_mode` / `ref_roots` / `active_root` | localStorage | `config.yaml` 每项目 |
+| 布局坐标 | localStorage | `config.yaml`（服务器 + local缓存） |
+
+新增 API：`/api/settings/load`、`/api/settings/save`、`/api/positions/save`、`/api/positions/load`
+
+### Git 版本控制
+
+```bash
+git init && git add -A && git commit
+```
+
+所有代码纳入 git，`.gitignore` 排除 `__pycache__`。`opencode.md` 顶部写入 AI 开发规则（走 agent 委派、每次 commit）。
+
+### Bug 修复
+
+| Bug | 修复 |
+|-----|------|
+| 核心/外部/隐藏复选框无效 | `onFilterChange` 事件分支补齐全部五种过滤器 |
+| 分类按钮不高亮 | `renderDetail` 补充分类高亮 + `detail-classify` 事件监听 |
+| 各 Tab 过滤器不同步 | 双向联动：任一 Tab 操作同步全部 |
+| 启动不显示项目标签 | `initAll` 增加 `loadProjects()` 调用 |
+| 外部文件路径反斜杠 | 挂载时路径统一 `replace("\\", "/")` |
+
+### UI 改进
+
+| 改进 | 说明 |
+|------|------|
+| 删除项目入口 | 从标签栏 × 移至 ⚙ 设置弹窗底部「危险操作」 |
+| 用语统一 | 所有"删除"→"移除"，前端文案一致 |
