@@ -61,10 +61,10 @@ function isFileVisible(path) {
   return true;
 }
 function isVisibleInGraph(path) {
-  if (isHiddenFile(path)) return false;
+  // External and hidden files never appear in graphs
+  if (isExternalFile(path) || isHiddenFile(path)) return false;
   const s=getSettings();
   if (s.displayMode==='ref' && s.activeRoot) { if (!S.reachableSet.has(path)) return false; }
-  if (isExternalFile(path)) return S.showExternal;
   return isFileVisible(path);
 }
 
@@ -417,8 +417,19 @@ function computeRefLevels(graphData, visiblePaths) {
 function renderMemoryRefTree(container){
   const nodes=[],edges=[],nodeIds=new Set();
   const visiblePaths=new Set(S.files.filter(f=>isVisibleInGraph(f.path)).map(f=>f.path));
-  const levels=computeRefLevels(S.graphData,visiblePaths);
-  for(const f of S.files){if(!isVisibleInGraph(f.path))continue;const lv=levels[f.path]||0;nodes.push({id:f.path,label:baseName(f.path),group:f.type,color:{background:getNodeColor(f.type,f.path),border:'#1c1f2e',highlight:{background:getNodeColor(f.type,f.path),border:'#fff'}},font:{color:'#c9d1d9',size:9,face:'monospace'},shape:'box',margin:5,title:f.path+'\n'+getFtypeLabel(f.type),level:lv});nodeIds.add(f.path);}
+  // Compute DAG levels for core files only, then remap by classification group
+  const dagLevels=computeRefLevels(S.graphData,visiblePaths);
+  const coreLevels={}; let maxCoreLevel=0;
+  for(const p of visiblePaths){if(isCoreFile(p)){const dl=dagLevels[p]||0;coreLevels[p]=dl;if(dl>maxCoreLevel)maxCoreLevel=dl;}}
+  const BASE_LEVEL=0, STANDALONE_LEVEL=1, CORE_BASE_LEVEL=2;
+  for(const f of S.files){
+    if(!isVisibleInGraph(f.path))continue;
+    let lv;
+    if(isBaseFile(f.path)) lv=BASE_LEVEL;
+    else if(isStandaloneFile(f.path)) lv=STANDALONE_LEVEL;
+    else lv=CORE_BASE_LEVEL+(coreLevels[f.path]||0);
+    nodes.push({id:f.path,label:baseName(f.path),group:f.type,color:{background:getNodeColor(f.type,f.path),border:'#1c1f2e',highlight:{background:getNodeColor(f.type,f.path),border:'#fff'}},font:{color:'#c9d1d9',size:9,face:'monospace'},shape:'box',margin:5,title:f.path+'\n'+getFtypeLabel(f.type),level:lv});nodeIds.add(f.path);
+  }
   const edgeData=(S.graphData.edges||[]).filter(e=>visiblePaths.has(e.from)&&visiblePaths.has(e.to));const edgeSet=new Set(edgeData.map(e=>e.from+'|||'+e.to));
   for(const e of edgeData){const isBi=edgeSet.has(e.to+'|||'+e.from);edges.push({from:e.from,to:e.to,arrows:isBi?'to,from':'to',color:{color:'#3a3d4e',highlight:'#58a6ff'},width:1,smooth:{type:'curvedCW',roundness:0.2}});}
   const data={nodes:new vis.DataSet(nodes),edges:new vis.DataSet(edges)};const savedPos=lsGet('reftree_positions');
@@ -465,7 +476,7 @@ function renderDepGraph(){
   const visiblePaths=new Set(S.files.filter(f=>isVisibleInGraph(f.path)).map(f=>f.path));
   const gNodes=S.graphData.nodes.filter(n=>visiblePaths.has(n.id));
   let gEdges=S.graphData.edges.filter(e=>visiblePaths.has(e.from)&&visiblePaths.has(e.to));
-  const CLS=['base','standalone','external'];const clsCount={base:0,standalone:0,external:0},clsIndex={};
+  const CLS=['base','standalone'];const clsCount={base:0,standalone:0},clsIndex={};
   for(const n of gNodes){const cls=getClassification(n.id);if(cls in clsCount){clsIndex[n.id]=clsCount[cls];clsCount[cls]++;}}
   const X_GAP=150,Y_TOP=-350,Y_GAP=120;
   const nodesArr=gNodes.map(n=>{const base={id:n.id,label:baseName(n.id),group:n.group,title:n.title,color:{background:getNodeColor(n.group,n.id),border:'#1c1f2e',highlight:{background:getNodeColor(n.group,n.id),border:'#fff'}},font:{color:'#c9d1d9',size:10,face:'monospace'},shape:'box',margin:5};const cls=getClassification(n.id);if(cls in clsCount){const idx=CLS.indexOf(cls);base.x=(clsIndex[n.id]-(clsCount[cls]-1)/2)*X_GAP;base.y=Y_TOP+idx*Y_GAP;}if(n.is_external){base.shapeProperties={borderDashes:[5,5]};base.borderWidth=2;}return base;});
