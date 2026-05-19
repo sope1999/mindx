@@ -379,13 +379,52 @@ function renderRefTreeGraph(){const container=document.getElementById('ref-tree-
 function renderDirTreeGraph(){const container=document.getElementById('dir-tree-container');if(!S.files.length)return;renderMemoryDirTree(container);}
 function renderAll(){renderFileTree();renderRefTreeGraph();renderDirTreeGraph();renderDepGraph();}
 
+function computeRefLevels(graphData, visiblePaths) {
+  const gEdges = (graphData.edges || []).filter(e => visiblePaths.has(e.from) && visiblePaths.has(e.to));
+  const indegree = {};
+  const adj = {};
+  for (const p of visiblePaths) { indegree[p] = 0; adj[p] = []; }
+  for (const e of gEdges) {
+    adj[e.from] = (adj[e.from] || []); adj[e.from].push(e.to);
+    indegree[e.to] = (indegree[e.to] || 0) + 1;
+  }
+  const levels = {};
+  let queue = [];
+  for (const [n, d] of Object.entries(indegree)) {
+    if (d === 0) { queue.push(n); levels[n] = 0; }
+  }
+  while (queue.length) {
+    const next = [];
+    for (const n of queue) {
+      for (const child of (adj[n] || [])) {
+        if (!(child in levels)) {
+          indegree[child]--;
+          if (indegree[child] === 0) {
+            levels[child] = (levels[n] || 0) + 1;
+            next.push(child);
+          }
+        }
+      }
+    }
+    queue = next;
+  }
+  for (const p of visiblePaths) {
+    if (!(p in levels)) levels[p] = 0;
+  }
+  return levels;
+}
+
 function renderMemoryRefTree(container){
   const nodes=[],edges=[],nodeIds=new Set();
   const visiblePaths=new Set(S.files.filter(f=>isVisibleInGraph(f.path)).map(f=>f.path));
-  const clsCount={base:0,standalone:0,external:0},clsIndex={};
-  for(const f of S.files){if(!isVisibleInGraph(f.path))continue;const cls=getClassification(f.path);if(cls in clsCount){clsIndex[f.path]=clsCount[cls];clsCount[cls]++;}}
-  const X_GAP=150,Y_TOP=-350,Y_GAP=120;
-  for(const f of S.files){if(!isVisibleInGraph(f.path))continue;const cls=getClassification(f.path);const n={id:f.path,label:baseName(f.path),group:f.type,color:{background:getNodeColor(f.type,f.path),border:'#1c1f2e',highlight:{background:getNodeColor(f.type,f.path),border:'#fff'}},font:{color:'#c9d1d9',size:9,face:'monospace'},shape:'box',margin:5,title:f.path+'\n'+getFtypeLabel(f.type)};if(cls in clsCount){const CLS=['base','standalone','external'];const idx=CLS.indexOf(cls);n.x=(clsIndex[f.path]-(clsCount[cls]-1)/2)*X_GAP;n.y=Y_TOP+idx*Y_GAP;}nodes.push(n);nodeIds.add(f.path);}
+  const levels=computeRefLevels(S.graphData,visiblePaths);
+  const maxLevel=Math.max(0,...Object.values(levels));
+  const levelCount={},levelIndex={};
+  for(const p of visiblePaths){const lv=levels[p]||0;levelIndex[p]=levelCount[lv]||0;levelCount[lv]=(levelCount[lv]||0)+1;}
+  const X_GAP=150,Y_GAP=120;
+  const totalLevels=maxLevel+1;
+  const Y_TOP=-(totalLevels-1)*Y_GAP/2;
+  for(const f of S.files){if(!isVisibleInGraph(f.path))continue;const lv=levels[f.path]||0;const n={id:f.path,label:baseName(f.path),group:f.type,color:{background:getNodeColor(f.type,f.path),border:'#1c1f2e',highlight:{background:getNodeColor(f.type,f.path),border:'#fff'}},font:{color:'#c9d1d9',size:9,face:'monospace'},shape:'box',margin:5,title:f.path+'\n'+getFtypeLabel(f.type)};n.x=(levelIndex[f.path]-((levelCount[lv]||1)-1)/2)*X_GAP;n.y=Y_TOP+lv*Y_GAP;nodes.push(n);nodeIds.add(f.path);}
   const edgeData=(S.graphData.edges||[]).filter(e=>visiblePaths.has(e.from)&&visiblePaths.has(e.to));const edgeSet=new Set(edgeData.map(e=>e.from+'|||'+e.to));
   for(const e of edgeData){const isBi=edgeSet.has(e.to+'|||'+e.from);edges.push({from:e.from,to:e.to,arrows:isBi?'to,from':'to',color:{color:'#3a3d4e',highlight:'#58a6ff'},width:1,smooth:{type:'curvedCW',roundness:0.2}});}
   const data={nodes:new vis.DataSet(nodes),edges:new vis.DataSet(edges)};const savedPos=lsGet('reftree_positions');const isFirstRender=!savedPos;
