@@ -167,6 +167,14 @@ GET  /api/settings/load
 POST /api/settings/save
   body: {file_classes?, excluded_dirs?, display_mode?, ref_roots?, active_root?}
   → {success: bool}
+
+POST /api/file/rename-preview
+  body: {path: str, new_name: str}
+  → {changes: [{file: str, changes: [{old_link: str, new_link: str, context: str}]}]}
+
+POST /api/file/rename-execute
+  body: {path: str, new_path: str}
+  → {success: bool, updated_files: [str]}
 ```
 
 ### SocketIO Events (server → client)
@@ -310,6 +318,7 @@ S = {
 **UI:**
 - `showSettings()` / `hideSettings()` — toggle settings modal
 - `showCtxMenu(e, path)` — context menu for file
+- `showRenameDialog(path)` — rename file with preview/confirm, calls /api/file/rename-preview + /api/file/rename-execute
 - `showModal(title, content, buttons)` — generic modal
 - `showToast(msg)` — timed toast notification
 - `renderProjectTabs()` — renders project tab bar + dropdown
