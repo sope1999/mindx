@@ -590,7 +590,7 @@ def api_rename_preview():
             if link.target == old_path:
                 file_changes.append({
                     "old_link": link.raw_target,
-                    "new_link": new_name,  # same dir, just new filename
+                    "new_link": link.raw_target.replace(old_basename, new_name),
                     "context": link.context[:80],
                 })
         if file_changes:
@@ -647,7 +647,9 @@ def api_rename_execute():
                     for link in info.links:
                         if link.target == old_path:
                             old_text = '](' + link.raw_target + ')'
-                            new_text = '](' + Path(new_path).name + ')'
+                            # Preserve directory portion, only replace filename
+                            new_raw = link.raw_target.replace(old_basename, new_basename)
+                            new_text = '](' + new_raw + ')'
                             newcontent = content.replace(old_text, new_text)
                             if newcontent != content:
                                 content = newcontent
@@ -667,7 +669,8 @@ def api_rename_execute():
             for link in info.links:
                 if link.target == old_path:
                     old_text = '](' + link.raw_target + ')'
-                    new_text = '](' + Path(new_path).name + ')'
+                    new_raw = link.raw_target.replace(old_basename, new_basename)
+                    new_text = '](' + new_raw + ')'
                     newcontent = content.replace(old_text, new_text)
                     if newcontent != content:
                         content = newcontent
