@@ -417,26 +417,59 @@ function computeRefLevels(graphData, visiblePaths) {
 function renderMemoryRefTree(container){
   const nodes=[],edges=[],nodeIds=new Set();
   const visiblePaths=new Set(S.files.filter(f=>isVisibleInGraph(f.path)).map(f=>f.path));
-  // Compute DAG levels for core files only, then remap by classification group
-  const dagLevels=computeRefLevels(S.graphData,visiblePaths);
-  const coreLevels={}; let maxCoreLevel=0;
-  for(const p of visiblePaths){if(isCoreFile(p)){const dl=dagLevels[p]||0;coreLevels[p]=dl;if(dl>maxCoreLevel)maxCoreLevel=dl;}}
-  const BASE_LEVEL=0, STANDALONE_LEVEL=1, CORE_BASE_LEVEL=2;
+  if(!visiblePaths.size)return;
+  
+  // Build reference tree ONLY to get node depths (same tree as sidebar)
+  const refTree=buildRefTree(S.graphData);
+  const depthMap={};
+  (function setDepth(treeNodes,d){
+    for(const tn of treeNodes){
+      depthMap[tn.path]=d;
+      if(tn.children.length)setDepth(tn.children,d+1);
+    }
+  })(refTree,0);
+  
+  // Create nodes with tree depth as hierarchical level
   for(const f of S.files){
-    if(!isVisibleInGraph(f.path))continue;
-    let lv;
-    if(isBaseFile(f.path)) lv=BASE_LEVEL;
-    else if(isStandaloneFile(f.path)) lv=STANDALONE_LEVEL;
-    else lv=CORE_BASE_LEVEL+(coreLevels[f.path]||0);
-    nodes.push({id:f.path,label:baseName(f.path),group:f.type,color:{background:getNodeColor(f.type,f.path),border:'#1c1f2e',highlight:{background:getNodeColor(f.type,f.path),border:'#fff'}},font:{color:'#c9d1d9',size:9,face:'monospace'},shape:'box',margin:5,title:f.path+'\n'+getFtypeLabel(f.type),level:lv});nodeIds.add(f.path);
+    if(!visiblePaths.has(f.path))continue;
+    const d=f.path in depthMap?depthMap[f.path]:0;
+    nodes.push({
+      id:f.path,label:baseName(f.path),group:f.type,
+      color:{background:getNodeColor(f.type,f.path),border:'#1c1f2e',highlight:{background:getNodeColor(f.type,f.path),border:'#fff'}},
+      font:{color:'#c9d1d9',size:9,face:'monospace'},
+      shape:'box',margin:5,
+      title:f.path+'\n'+getFtypeLabel(f.type),
+      level:d
+    });
+    nodeIds.add(f.path);
   }
-  const edgeData=(S.graphData.edges||[]).filter(e=>visiblePaths.has(e.from)&&visiblePaths.has(e.to));const edgeSet=new Set(edgeData.map(e=>e.from+'|||'+e.to));
-  for(const e of edgeData){const isBi=edgeSet.has(e.to+'|||'+e.from);edges.push({from:e.from,to:e.to,arrows:isBi?'to,from':'to',color:{color:'#3a3d4e',highlight:'#58a6ff'},width:1,smooth:{type:'curvedCW',roundness:0.2}});}
-  const data={nodes:new vis.DataSet(nodes),edges:new vis.DataSet(edges)};const savedPos=lsGet('reftree_positions');
-  const opts={layout:{hierarchical:{enabled:true,direction:'UD',sortMethod:'directed',levelSeparation:100,nodeSpacing:70,treeSpacing:150,blockShifting:true,edgeMinimization:true}},physics:{enabled:false},interaction:{dragNodes:true,hover:true,navigationButtons:true,keyboard:true}};
-  if(S.netRefTree)S.netRefTree.destroy();S.netRefTree=new vis.Network(container,data,opts);
+  
+  // Use ALL graph edges (covers tree edges + cross-references)
+  const edgeData=(S.graphData.edges||[]).filter(e=>visiblePaths.has(e.from)&&visiblePaths.has(e.to));
+  const edgeSet=new Set(edgeData.map(e=>e.from+'|||'+e.to));
+  for(const e of edgeData){
+    const isBi=edgeSet.has(e.to+'|||'+e.from);
+    edges.push({
+      from:e.from,to:e.to,
+      arrows:isBi?'to,from':'to',
+      color:{color:'#3a3d4e',highlight:'#58a6ff'},
+      width:1,smooth:{type:'curvedCW',roundness:0.2}
+    });
+  }
+  
+  if(!nodes.length)return;
+  const data={nodes:new vis.DataSet(nodes),edges:new vis.DataSet(edges)};
+  const savedPos=lsGet('reftree_positions');
+  const opts={
+    layout:{hierarchical:{enabled:true,direction:'UD',sortMethod:'directed',levelSeparation:100,nodeSpacing:70,treeSpacing:150,blockShifting:true,edgeMinimization:true}},
+    physics:{enabled:false},
+    interaction:{dragNodes:true,hover:true,navigationButtons:true,keyboard:true}
+  };
+  if(S.netRefTree)S.netRefTree.destroy();
+  S.netRefTree=new vis.Network(container,data,opts);
   if(savedPos){try{const nds=data.nodes;for(const n of nodes){if(savedPos[n.id])nds.update({id:n.id,x:savedPos[n.id].x,y:savedPos[n.id].y});}}catch(e){}}
-  S.netRefTree.on('dragEnd',()=>{saveRefTreePositions();});S.netRefTree.on('click',params=>{if(params.nodes.length>0){const id=params.nodes[0];if(id!=='__ROOT__'&&!id.endsWith('/'))selectFile(id);}});
+  S.netRefTree.on('dragEnd',()=>{saveRefTreePositions();});
+  S.netRefTree.on('click',params=>{if(params.nodes.length>0){const id=params.nodes[0];if(id!=='__ROOT__'&&!id.endsWith('/'))selectFile(id);}});
 }
 function savePosition(key,net){
   if(!net)return;
