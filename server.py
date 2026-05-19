@@ -581,6 +581,7 @@ def api_rename_preview():
     # For each referencing file, find which links point to the old file
     # and show what the new link text would be
     changes = []
+    old_basename = Path(old_path).name
     for ref_file in referencing:
         if ref_file not in engine.files:
             continue
