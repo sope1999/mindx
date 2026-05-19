@@ -418,20 +418,14 @@ function renderMemoryRefTree(container){
   const nodes=[],edges=[],nodeIds=new Set();
   const visiblePaths=new Set(S.files.filter(f=>isVisibleInGraph(f.path)).map(f=>f.path));
   const levels=computeRefLevels(S.graphData,visiblePaths);
-  const maxLevel=Math.max(0,...Object.values(levels));
-  const levelCount={},levelIndex={};
-  for(const p of visiblePaths){const lv=levels[p]||0;levelIndex[p]=levelCount[lv]||0;levelCount[lv]=(levelCount[lv]||0)+1;}
-  const X_GAP=150,Y_GAP=120;
-  const totalLevels=maxLevel+1;
-  const Y_TOP=-(totalLevels-1)*Y_GAP/2;
-  for(const f of S.files){if(!isVisibleInGraph(f.path))continue;const lv=levels[f.path]||0;const n={id:f.path,label:baseName(f.path),group:f.type,color:{background:getNodeColor(f.type,f.path),border:'#1c1f2e',highlight:{background:getNodeColor(f.type,f.path),border:'#fff'}},font:{color:'#c9d1d9',size:9,face:'monospace'},shape:'box',margin:5,title:f.path+'\n'+getFtypeLabel(f.type)};n.x=(levelIndex[f.path]-((levelCount[lv]||1)-1)/2)*X_GAP;n.y=Y_TOP+lv*Y_GAP;nodes.push(n);nodeIds.add(f.path);}
+  for(const f of S.files){if(!isVisibleInGraph(f.path))continue;const lv=levels[f.path]||0;nodes.push({id:f.path,label:baseName(f.path),group:f.type,color:{background:getNodeColor(f.type,f.path),border:'#1c1f2e',highlight:{background:getNodeColor(f.type,f.path),border:'#fff'}},font:{color:'#c9d1d9',size:9,face:'monospace'},shape:'box',margin:5,title:f.path+'\n'+getFtypeLabel(f.type),level:lv});nodeIds.add(f.path);}
   const edgeData=(S.graphData.edges||[]).filter(e=>visiblePaths.has(e.from)&&visiblePaths.has(e.to));const edgeSet=new Set(edgeData.map(e=>e.from+'|||'+e.to));
   for(const e of edgeData){const isBi=edgeSet.has(e.to+'|||'+e.from);edges.push({from:e.from,to:e.to,arrows:isBi?'to,from':'to',color:{color:'#3a3d4e',highlight:'#58a6ff'},width:1,smooth:{type:'curvedCW',roundness:0.2}});}
   const data={nodes:new vis.DataSet(nodes),edges:new vis.DataSet(edges)};const savedPos=lsGet('reftree_positions');
-  if(savedPos){try{const nds=data.nodes;for(const n of nodes){if(savedPos[n.id])nds.update({id:n.id,x:savedPos[n.id].x,y:savedPos[n.id].y});}}catch(e){}}
-  const opts={layout:{improvedLayout:true,randomSeed:42},physics:{solver:'forceAtlas2Based',forceAtlas2Based:{gravitationalConstant:-50,centralGravity:0.01,springLength:100,springConstant:0.08},stabilization:{iterations:150}},interaction:{hover:true,navigationButtons:true,keyboard:true}};
+  const opts={layout:{hierarchical:{enabled:true,direction:'UD',sortMethod:'directed',levelSeparation:100,nodeSpacing:70,treeSpacing:150,blockShifting:true,edgeMinimization:true}},physics:{enabled:false},interaction:{dragNodes:true,hover:true,navigationButtons:true,keyboard:true}};
   if(S.netRefTree)S.netRefTree.destroy();S.netRefTree=new vis.Network(container,data,opts);
-  let stab=false;S.netRefTree.on('stabilized',()=>{if(!stab){stab=true;S.netRefTree.setOptions({physics:false});}});S.netRefTree.on('dragEnd',()=>{saveRefTreePositions();});S.netRefTree.on('click',params=>{if(params.nodes.length>0){const id=params.nodes[0];if(id!=='__ROOT__'&&!id.endsWith('/'))selectFile(id);}});
+  if(savedPos){try{const nds=data.nodes;for(const n of nodes){if(savedPos[n.id])nds.update({id:n.id,x:savedPos[n.id].x,y:savedPos[n.id].y});}}catch(e){}}
+  S.netRefTree.on('dragEnd',()=>{saveRefTreePositions();});S.netRefTree.on('click',params=>{if(params.nodes.length>0){const id=params.nodes[0];if(id!=='__ROOT__'&&!id.endsWith('/'))selectFile(id);}});
 }
 function savePosition(key,net){
   if(!net)return;
