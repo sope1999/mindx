@@ -470,6 +470,8 @@ function renderMemoryRefTree(container){
   };
   if(S.netRefTree)S.netRefTree.destroy();
   S.netRefTree=new vis.Network(container,data,opts);
+  // After first draw, disable hierarchical so users can freely drag y-axis
+  S.netRefTree.once('afterDrawing',()=>{S.netRefTree.setOptions({layout:{hierarchical:false}});});
   if(savedPos){try{const nds=data.nodes;for(const n of nodes){if(savedPos[n.id])nds.update({id:n.id,x:savedPos[n.id].x,y:savedPos[n.id].y});}}catch(e){}}
   S.netRefTree.on('dragEnd',()=>{saveRefTreePositions();});
   S.netRefTree.on('click',params=>{if(params.nodes.length>0){const id=params.nodes[0];if(id!=='__ROOT__'&&!id.endsWith('/'))selectFile(id);}});
