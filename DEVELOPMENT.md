@@ -533,6 +533,9 @@ git init && git add -A && git commit
 | Bug | 根因 | 修复 |
 |-----|------|------|
 | 自环边导致 Kahn 死锁 | 节点引用自身形成自环，Kahn 算法永远无法将其入度归零 | 预处理阶段过滤自环边（`from === to`） |
+| 自环箭头误显为双向 | overview.md→overview.md 等自引用渲染为角落箭头 | 过滤 from===to 的边 |
+| 双向引用显示两条并行线 | A→B 和 B→A 各渲染一条 | 合并为单条双向箭头 (arrows:'to,from') + seenBi 去重 |
+| 双向箭头不渲染 | 缺少全局 edges.arrows 配置 | opts 加入 edges:{arrows:{to:{enabled:true},from:{enabled:true}}} |
 | 绝对路径边在 computeRefLevels 中被过滤 | 外部文件使用绝对路径作为节点 ID，与项目相对路径不匹配 | 统一使用节点 ID 查找，不假设路径格式 |
 | savedPos 后覆盖手动坐标 | `renderMemoryRefTree` 先应用手动坐标，后被 savedPos 覆盖 | 优先级调整：savedPos > 手动拖动 > 自动布局 |
 | 孤立检测覆盖已处理的 Kahn 节点 | 孤立节点（无入边无出边）在 Kahn 处理后又被孤立检测重复处理 | 孤立检测跳过已在 Kahn 结果中的节点 |
