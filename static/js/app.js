@@ -31,10 +31,22 @@ function getClassification(path) {
   return getDefaultClassification(path);
 }
 function getDefaultClassification(path) {
-  if (BASE_DEFAULT.has(path)) return 'base';
-  if (STANDALONE_DEFAULT.has(path)) return 'standalone';
-  if (path.startsWith('memory/') || path === 'MEMORY.md') return 'core';
-  return 'external';
+  // Reference-tree-based classification (universal, no hardcoded filenames)
+  if (!S.graphData || !S.graphData.edges) {
+    // Fallback: graph not loaded yet
+    if (BASE_DEFAULT.has(path)) return 'base';
+    if (STANDALONE_DEFAULT.has(path)) return 'standalone';
+    return 'external';
+  }
+  const edges = S.graphData.edges || [];
+  let indeg = 0, outdeg = 0;
+  for (const e of edges) {
+    if (e.to === path) indeg++;
+    if (e.from === path) outdeg++;
+  }
+  if (indeg === 0 && outdeg === 0) return 'standalone';  // isolated
+  if (indeg === 0 && outdeg > 0) return 'base';           // root, source of references
+  return 'core';                                           // referenced by others
 }
 function setClassification(path, cls) {
   const overrides = lsGet('file_classes') || {};
