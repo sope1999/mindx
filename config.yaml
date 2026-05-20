@@ -8,98 +8,248 @@ projects:
   positions:
     dep_positions:
       AGENTS.md:
-        x: -281
-        y: -356
+        x: -806
+        y: -59
       HEARTBEAT.md:
-        x: -99
-        y: -376
+        x: -772
+        y: 102
       IDENTITY.md:
-        x: 89
-        y: -403
+        x: -707
+        y: -133
       MEMORY.md:
-        x: -97
-        y: 3
+        x: -3
+        y: 201
       SOUL.md:
-        x: 223
-        y: -321
+        x: -653
+        y: 90
+      TOOLS - 副本.md:
+        x: -676
+        y: -309
       TOOLS.md:
-        x: -325
-        y: 9
+        x: -177
+        y: 52
       urls.md:
-        x: -307
-        y: -92
+        x: 223
+        y: 207
       USER.md:
-        x: 345
-        y: -265
+        x: -627
+        y: 227
       任务工作规则.md:
-        x: 131
-        y: -61
+        x: -118
+        y: 406
+      项目开发工作规则 - 人工 - 副本.md:
+        x: 118
+        y: 728
       项目开发工作规则.md:
-        x: 135
-        y: 32
+        x: 203
+        y: 312
       项目开发管理方案.md:
-        x: 319
-        y: -42
+        x: 334
+        y: 491
       memory/archive/historymemory_index.md:
-        x: -176
-        y: 220
+        x: -227
+        y: 249
       memory/projects/projects_index.md:
-        x: 15
-        y: 206
+        x: -26
+        y: 440
       memory/tools/claude-code.md:
-        x: -310
-        y: 106
+        x: -113
+        y: -21
       memory/tools/cron.md:
-        x: 88
-        y: -139
+        x: 51
+        y: -24
       memory/tools/napcat.md:
-        x: -82
-        y: 233
+        x: 67
+        y: 421
       memory/tools/opencode.md:
-        x: -258
-        y: 172
+        x: 130
+        y: 0
       memory/tools/ragflow.md:
-        x: -66
-        y: -225
+        x: -32
+        y: -29
       memory/tools/search.md:
-        x: 23
-        y: -197
+        x: 198
+        y: 99
       memory/tools/system.md:
-        x: -253
-        y: -168
+        x: -187
+        y: 341
       memory/tools/urls.md:
-        x: 139
-        y: 287
+        x: -588
+        y: -133
       memory/tools/vcp.md:
-        x: 94
-        y: 125
+        x: 145
+        y: 381
       memory/tools/warning.md:
-        x: -168
-        y: -215
+        x: -224
+        y: 143
       memory/tools/full/claude-code-full.md:
-        x: -479
-        y: -40
+        x: -66
+        y: -247
       memory/tools/full/opencode-full.md:
-        x: -261
-        y: 393
+        x: 67
+        y: -224
       memory/projects/aviation/dev-sessions-old.md:
-        x: 398
-        y: 306
+        x: -414
+        y: 631
       memory/projects/aviation/dev-sessions.md:
-        x: 438
-        y: 84
+        x: -355
+        y: 416
       memory/projects/aviation/overview.md:
-        x: 240
-        y: 171
+        x: -207
+        y: 570
       memory/projects/aviation/PROJECT_PROGRESS.md:
-        x: 180
-        y: 393
+        x: -172
+        y: 780
       memory/projects/transforman/overview.md:
-        x: -39
-        y: 425
+        x: -89
+        y: 657
+      claude/opencode/opencode-projects.md:
+        x: 38
+        y: 615
+      claude/opencode/opencode-sessions.md:
+        x: 259
+        y: 637
+      claude/ubuclaude/CLAUDE.md:
+        x: -608
+        y: 366
       claude/ubuclaude/claude会话清单.md:
-        x: 414
-        y: -138
+        x: -536
+        y: 535
+      claude/ubuclaude/claude项目清单.md:
+        x: -446
+        y: 332
+      claude/winclaude/claude-code-projects.md:
+        x: 511
+        y: 462
+      claude/winclaude/claude-code-sessions.md:
+        x: 386
+        y: 646
+      claude/winclaude/CLAUDE.md:
+        x: -582
+        y: -458
+      claude/ubuclaude/headless/weekly-refresh-prompt.md:
+        x: -511
+        y: -230
+      C:/Users/xiaohei/Desktop/python/1/CLAUDE.md:
+        x: -509
+        y: 134
+      C:/Users/xiaohei/Desktop/python/1/PROJECT_PROGRESS.md:
+        x: -462
+        y: -34
+      C:/Users/xiaohei/Desktop/python/1/前端开发环境切换方案.md:
+        x: -396
+        y: -271
+      C:/Users/xiaohei/Desktop/python/1/程序项目开发标准大纲.md:
+        x: -391
+        y: 172
+      C:/Users/xiaohei/Desktop/python/1/账户迁移与协作说明.md:
+        x: -324
+        y: -40
+      C:/Users/xiaohei/Desktop/python/1/01-requirements/Ubuntu环境变更评估报告.md:
+        x: -448
+        y: -424
+      C:/Users/xiaohei/Desktop/python/1/01-requirements/接口需求说明V18.md:
+        x: -407
+        y: -559
+      C:/Users/xiaohei/Desktop/python/1/01-requirements/民航规章查询小程序-技术选型V18.md:
+        x: -274
+        y: -201
+      C:/Users/xiaohei/Desktop/python/1/01-requirements/界面原型说明V18.md:
+        x: -274
+        y: -401
+      C:/Users/xiaohei/Desktop/python/1/01-requirements/系统限制配置清单.md:
+        x: -157
+        y: -333
+      C:/Users/xiaohei/Desktop/python/1/01-requirements/需求规格说明书V18.md:
+        x: -282
+        y: -583
+      C:/Users/xiaohei/Desktop/python/1/02-guides/云服务器环境搭建指南.md:
+        x: -94
+        y: -485
+      C:/Users/xiaohei/Desktop/python/1/02-guides/云服务器编程指南.md:
+        x: -203
+        y: -679
+      C:/Users/xiaohei/Desktop/python/1/02-guides/前端开发环境搭建指南.md:
+        x: -79
+        y: -642
+      C:/Users/xiaohei/Desktop/python/1/02-guides/前端编程指南.md:
+        x: 28
+        y: -689
+      C:/Users/xiaohei/Desktop/python/1/02-guides/后端开发环境搭建指南.md:
+        x: 157
+        y: -688
+      C:/Users/xiaohei/Desktop/python/1/02-guides/后端编程指南.md:
+        x: 294
+        y: -641
+      C:/Users/xiaohei/Desktop/python/1/03-modules/backend-2.1-skeleton.md:
+        x: 118
+        y: -530
+      C:/Users/xiaohei/Desktop/python/1/03-modules/backend-2.10-health.md:
+        x: 179
+        y: -428
+      C:/Users/xiaohei/Desktop/python/1/03-modules/backend-2.2-database.md:
+        x: 182
+        y: -248
+      C:/Users/xiaohei/Desktop/python/1/03-modules/backend-2.3-auth.md:
+        x: 294
+        y: -333
+      C:/Users/xiaohei/Desktop/python/1/03-modules/backend-2.4-conversation.md:
+        x: 305
+        y: -3
+      C:/Users/xiaohei/Desktop/python/1/03-modules/backend-2.5-chat.md:
+        x: 365
+        y: -528
+      C:/Users/xiaohei/Desktop/python/1/03-modules/backend-2.6-feedback.md:
+        x: 318
+        y: -154
+      C:/Users/xiaohei/Desktop/python/1/03-modules/backend-2.7-admin.md:
+        x: 362
+        y: 254
+      C:/Users/xiaohei/Desktop/python/1/03-modules/backend-2.8-ban.md:
+        x: 426
+        y: -399
+      C:/Users/xiaohei/Desktop/python/1/03-modules/backend-2.9-scheduled.md:
+        x: 437
+        y: 43
+      C:/Users/xiaohei/Desktop/python/1/03-modules/模块文档审查报告.md:
+        x: 445
+        y: -178
+      C:/Users/xiaohei/Desktop/python/1/04-manual/后端使用说明书V1.0.md:
+        x: 469
+        y: 289
+      C:/Users/xiaohei/Desktop/python/1/04-manual/后端功能说明书V1.0.md:
+        x: 540
+        y: -480
+      C:/Users/xiaohei/Desktop/python/1/04-manual/说明书审查报告_2026-04-07.md:
+        x: 548
+        y: 197
+      C:/Users/xiaohei/Desktop/python/1/for human/Claude Code 使用方法.md:
+        x: 543
+        y: -260
+      C:/Users/xiaohei/Desktop/python/1/for human/用户服务协议.md:
+        x: 562
+        y: -32
+      C:/Users/xiaohei/Desktop/python/1/for human/管理员使用指南.md:
+        x: 642
+        y: 356
+      C:/Users/xiaohei/Desktop/python/1/memory/decision-2026-03-30-project-init.md:
+        x: 658
+        y: -367
+      C:/Users/xiaohei/Desktop/python/1/memory/decision-2026-04-04-doc-v18.md:
+        x: 674
+        y: 195
+      C:/Users/xiaohei/Desktop/python/1/memory/decision-2026-04-05-wsl2-migration.md:
+        x: 663
+        y: -194
+      C:/Users/xiaohei/Desktop/python/1/memory/decision-2026-04-06-ragflow-config.md:
+        x: 704
+        y: 76
+      C:/Users/xiaohei/Desktop/python/1/memory/decision-2026-04-06-session-management.md:
+        x: 757
+        y: -121
+      C:/Users/xiaohei/Desktop/python/1/03-modules/cache/README.md:
+        x: 812
+        y: 22
     dirtree_positions:
       __ROOT__:
         x: 0

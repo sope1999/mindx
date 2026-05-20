@@ -29,7 +29,10 @@ function getClassification(path) {
 }
 function getDefaultClassification(path) {
   // Pure reference-tree-based classification
-  if (!S.graphData || !S.graphData.edges) return 'core';
+  if (!S.graphData || !S.graphData.edges) return 'external';
+  // Check if externally mounted file (outside project root)
+  const node = (S.graphData.nodes || []).find(n => n.id === path);
+  if (node && node.is_external) return 'external';
   const edges = S.graphData.edges || [];
   let indeg = 0, outdeg = 0;
   for (const e of edges) {
