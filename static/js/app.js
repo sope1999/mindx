@@ -380,7 +380,29 @@ function renderDirTreeGraph(){const container=document.getElementById('dir-tree-
 function renderAll(){renderFileTree();renderRefTreeGraph();renderDirTreeGraph();renderDepGraph();}
 
 function computeRefLevels(graphData, visiblePaths) {
-  const gEdges = (graphData.edges || []).filter(e => visiblePaths.has(e.from) && visiblePaths.has(e.to));
+  const gEdges = [];
+  const normCache = {};
+  for (const e of (graphData.edges || [])) {
+    if (!visiblePaths.has(e.from)) continue;
+    let target = e.to;
+    if (!visiblePaths.has(target)) {
+      // Try to resolve absolute path to relative
+      if (!normCache[target]) {
+        const absNorm = target.replace(/\\/g, '/');
+        for (const vp of visiblePaths) {
+          const relNorm = vp.replace(/\\/g, '/');
+          if (absNorm.endsWith('/' + relNorm) || absNorm === relNorm) {
+            normCache[target] = vp;
+            break;
+          }
+        }
+      }
+      target = normCache[target];
+    }
+    if (target && visiblePaths.has(target)) {
+      gEdges.push({from: e.from, to: target});
+    }
+  }
   const indegree = {};
   const adj = {};
   for (const p of visiblePaths) { indegree[p] = 0; adj[p] = []; }
