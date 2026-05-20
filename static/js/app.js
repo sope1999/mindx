@@ -399,7 +399,7 @@ function computeRefLevels(graphData, visiblePaths) {
       }
       target = normCache[target];
     }
-    if (target && visiblePaths.has(target)) {
+    if (target && visiblePaths.has(target) && e.from !== target) {
       gEdges.push({from: e.from, to: target});
     }
   }
