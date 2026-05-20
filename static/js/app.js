@@ -760,6 +760,7 @@ if(savedFilters){
   document.querySelectorAll('.filter-external').forEach(cb=>cb.checked=S.showExternal);
   document.querySelectorAll('.filter-hidden').forEach(cb=>cb.checked=S.showHidden);
 }
+}catch(e){}
 connectSocket();
 
 // ── Graph panel resize ──
