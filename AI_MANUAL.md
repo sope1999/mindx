@@ -1,7 +1,7 @@
-# mindx v4.3 — AI-Readable Project Manual
+# mindx v4.4 — AI-Readable Project Manual
 
 > This document is the single source of truth for AI agents working on mindx.
-> Last verified against source: 2026-05-18.
+> Last verified against source: 2026-05-19.
 
 ## Contents
 
@@ -296,7 +296,8 @@ S = {
 - `mergeSuperGroups(node)` — merges overlapping groups at depth=0 only (called internally by `addDirGroups`)
 
 **Graphs (vis.js):**
-- `renderMemoryRefTree(container)` — reference tree: hierarchical then force layout
+- `computeRefLevels(graphData)` — Kahn topological sort on graph edges; returns `{levels: {nodeId: level}, maxLevel: number}`; drives DAG layer layout and auto-classification (core=has out-edges, base=has in-edges only, standalone=no edges)
+- `renderMemoryRefTree(container)` — reference tree: DAG hierarchical layout (Kahn levels → manual x,y), physics off, saved positions override
 - `renderMemoryDirTree(container)` — directory tree: manual x,y layout, physics off
 - `renderDepGraph()` — force-directed dependency graph
 
