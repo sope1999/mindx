@@ -36,13 +36,22 @@ function getDefaultClassification(path) {
   if (!S.graphData || !S.graphData.edges) return 'external';
   const node = (S.graphData.nodes || []).find(n => n.id === path);
   if (node && node.is_external) return 'external';
-  const edges = S.graphData.edges || [];
-  let indeg = 0, outdeg = 0;
-  for (const e of edges) {
-    if (e.to === path) indeg++;
-    if (e.from === path) outdeg++;
+  // Build reachable set from roots (indeg=0 nodes) — standalone = not in DAG
+  if (!S._dagReachable) {
+    const edges = S.graphData.edges || [];
+    const indeg = {}, adj = {};
+    for (const e of edges) { indeg[e.to] = (indeg[e.to] || 0) + 1; (adj[e.from] = adj[e.from] || []).push(e.to); }
+    const roots = Object.keys(adj).filter(n => !indeg[n]);
+    S._dagReachable = new Set();
+    const q = [...roots];
+    while (q.length) {
+      const n = q.shift();
+      if (S._dagReachable.has(n)) continue;
+      S._dagReachable.add(n);
+      for (const c of (adj[n] || [])) { if (!S._dagReachable.has(c)) q.push(c); }
+    }
   }
-  if (indeg === 0 && outdeg === 0) return 'standalone';
+  if (!S._dagReachable.has(path)) return 'standalone';
   return 'core';
 }
 function setClassification(path, cls) {
@@ -647,10 +656,10 @@ async function initAll(){
   await fetchFiles();await fetchGraph();await loadPositionsFallback();renderAll();
 }
 async function fetchFiles(){S.files=await api('/api/files');computeStaleMap();applyAfterData();}
-async function fetchGraph(){S.graphData=await api('/api/graph');computeStaleMap();applyAfterData();}
+async function fetchGraph(){S._dagReachable=null;S.graphData=await api('/api/graph');computeStaleMap();applyAfterData();}
 function applyAfterData(){const s=getSettings();if(s.displayMode==='ref'&&s.activeRoot)computeReachable(s.activeRoot);renderAll();}
 function updateStats(st){if(st&&st.stats)document.getElementById('file-count').textContent=(st.stats.total_files||0)+' 文件 · '+(st.stats.total_edges||0)+' 边';if(st&&st.project_root)document.getElementById('footer-path').textContent=st.project_root;}
-async function handleProjectSwitched(data){S.activeProject={name:data.name,root:data.root};await loadSettings();S.files=data.files||[];S.graphData=data.graph||null;computeStaleMap();const s=getSettings();if(s.displayMode==='ref'&&s.activeRoot)computeReachable(s.activeRoot);else S.reachableSet=new Set();renderProjectTabs();renderAll();updateStats(data);showToast('已切换到项目：'+data.name);}
+async function handleProjectSwitched(data){S.activeProject={name:data.name,root:data.root};await loadSettings();S.files=data.files||[];S._dagReachable=null;S.graphData=data.graph||null;computeStaleMap();const s=getSettings();if(s.displayMode==='ref'&&s.activeRoot)computeReachable(s.activeRoot);else S.reachableSet=new Set();renderProjectTabs();renderAll();updateStats(data);showToast('已切换到项目：'+data.name);}
 
 // ── Project management ──
 async function loadProjects(){const resp=await fetch('/api/projects');const data=await resp.json();S.projects=data;renderProjectTabs();if(S.projects.length>0&&!S.activeProject)selectProject(S.projects[0].name);}
