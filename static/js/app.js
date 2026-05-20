@@ -77,11 +77,15 @@ function isFileVisible(path) {
   return true;
 }
 function isVisibleInGraph(path) {
-  // Classification only affects filter toggles and colors — not graph membership.
-  // Reference relationships determine layout position.
   const s=getSettings();
   if (s.displayMode==='ref' && s.activeRoot) { if (!S.reachableSet.has(path)) return false; }
-  return isFileVisible(path);
+  if (!isFileVisible(path)) return false;
+  // Graphs always follow ref-mode rules: external files need reference relationships
+  if (isExternalFile(path) && S.graphData) {
+    const hasEdges = (S.graphData.edges || []).some(e => e.from === path || e.to === path);
+    if (!hasEdges) return false;
+  }
+  return true;
 }
 
 // ── Utils ──
