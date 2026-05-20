@@ -500,8 +500,8 @@ function renderMemoryRefTree(container){
     nodeIds.add(f.path);
   }
   
-  // Use ALL graph edges (covers tree edges + cross-references)
-  const edgeData=(S.graphData.edges||[]).filter(e=>visiblePaths.has(e.from)&&visiblePaths.has(e.to));
+  // Use ALL graph edges (covers tree edges + cross-references), skip self-loops
+  const edgeData=(S.graphData.edges||[]).filter(e=>visiblePaths.has(e.from)&&visiblePaths.has(e.to)&&e.from!==e.to);
   const edgeSet=new Set(edgeData.map(e=>e.from+'|||'+e.to));
   const seenBi=new Set();
   for(const e of edgeData){
@@ -591,7 +591,7 @@ function renderDepGraph(){
   if(!S.graphData)return;const container=document.getElementById('dep-graph-container');
   const visiblePaths=new Set(S.files.filter(f=>isVisibleInGraph(f.path)).map(f=>f.path));
   const gNodes=S.graphData.nodes.filter(n=>visiblePaths.has(n.id));
-  let gEdges=S.graphData.edges.filter(e=>visiblePaths.has(e.from)&&visiblePaths.has(e.to));
+  let gEdges=S.graphData.edges.filter(e=>visiblePaths.has(e.from)&&visiblePaths.has(e.to)&&e.from!==e.to);
   const CLS=['base','standalone'];const clsCount={base:0,standalone:0},clsIndex={};
   for(const n of gNodes){const cls=getClassification(n.id);if(cls in clsCount){clsIndex[n.id]=clsCount[cls];clsCount[cls]++;}}
   const X_GAP=150,Y_TOP=-350,Y_GAP=120;

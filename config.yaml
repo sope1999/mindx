@@ -80,20 +80,20 @@ projects:
         x: -402
         y: -227
       memory/projects/aviation/dev-sessions.md:
-        x: -391
-        y: -14
+        x: -337
+        y: -26
       memory/projects/aviation/overview.md:
         x: -180
         y: -207
       memory/projects/aviation/PROJECT_PROGRESS.md:
-        x: -28
-        y: -325
+        x: 40
+        y: -271
       memory/projects/transforman/overview.md:
         x: 282
         y: -180
       claude/ubuclaude/claude会话清单.md:
-        x: -560
-        y: 30
+        x: -143
+        y: -132
     dirtree_positions:
       __ROOT__:
         x: 0
