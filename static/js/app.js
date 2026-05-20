@@ -506,8 +506,10 @@ function renderMemoryRefTree(container){
   }
 
   if(!nodes.length)return;
-  const data={nodes:new vis.DataSet(nodes),edges:new vis.DataSet(edges)};
+  // Merge saved positions into node data BEFORE creating DataSet
   const savedPos=lsGet('reftree_positions');
+  if(savedPos){for(const n of nodes){if(savedPos[n.id]){n.x=savedPos[n.id].x;n.y=savedPos[n.id].y;}}}
+  const data={nodes:new vis.DataSet(nodes),edges:new vis.DataSet(edges)};
   const opts={
     layout:{improvedLayout:false,randomSeed:42},
     physics:{enabled:false},
@@ -515,7 +517,6 @@ function renderMemoryRefTree(container){
   };
   if(S.netRefTree)S.netRefTree.destroy();
   S.netRefTree=new vis.Network(container,data,opts);
-  if(savedPos){try{const nds=data.nodes;for(const n of nodes){if(savedPos[n.id])nds.update({id:n.id,x:savedPos[n.id].x,y:savedPos[n.id].y});}}catch(e){}}
   S.netRefTree.on('dragEnd',()=>{saveRefTreePositions();});
   S.netRefTree.on('click',params=>{if(params.nodes.length>0){const id=params.nodes[0];if(id!=='__ROOT__'&&!id.endsWith('/'))selectFile(id);}});
 }
