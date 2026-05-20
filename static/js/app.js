@@ -430,9 +430,9 @@ function computeRefLevels(graphData, visiblePaths) {
     }
     queue = next;
   }
-  // Isolated nodes (no incoming AND no outgoing edges) → level -1 (above roots)
+  // Isolated nodes (never processed by Kahn, no incoming AND no outgoing edges) → level -1
   for (const [n, d] of Object.entries(indegree)) {
-    if (d === 0 && (!adj[n] || adj[n].length === 0)) {
+    if (!(n in levels) && d === 0 && (!adj[n] || adj[n].length === 0)) {
       levels[n] = -1;
     }
   }
