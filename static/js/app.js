@@ -453,15 +453,18 @@ function renderMemoryRefTree(container){
       from:e.from,to:e.to,
       arrows:isBi?'to,from':'to',
       color:{color:'#3a3d4e',highlight:'#58a6ff'},
-      width:1,smooth:{type:'curvedCW',roundness:0.2}
+      width:1,smooth:false
     });
   }
   
+  // Sort nodes by (level, name) for consistent level-internal ordering
+  nodes.sort((a,b)=>a.level-b.level||a.label.localeCompare(b.label));
+
   if(!nodes.length)return;
   const data={nodes:new vis.DataSet(nodes),edges:new vis.DataSet(edges)};
   const savedPos=lsGet('reftree_positions');
   const opts={
-    layout:{hierarchical:{enabled:true,direction:'UD',sortMethod:'directed',levelSeparation:100,nodeSpacing:70,treeSpacing:150,blockShifting:true,edgeMinimization:true}},
+    layout:{hierarchical:{enabled:true,direction:'UD',sortMethod:'directed',levelSeparation:180,nodeSpacing:120,treeSpacing:150,blockShifting:true,edgeMinimization:true}},
     physics:{enabled:false},
     interaction:{dragNodes:true,hover:true,navigationButtons:true,keyboard:true}
   };
