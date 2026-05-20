@@ -92,6 +92,7 @@ function isVisibleInGraph(path) {
 // ── Utils ──
 function getFileIcon(ft){const m={root_index:'🏠',constitution:'📜',cheatsheet:'📋',manual:'📖',bookmarks:'🔖',project_index:'📊',project_overview:'📝',project_progress:'📈',dev_sessions:'🔄',dev_sessions_old:'📦',tool_l2:'⚙️',tool_l3:'📚',tool_standalone:'🔧',archive_index:'🗄',diary:'📅',root_doc:'📄'};return m[ft]||'📄';}
 function getGroupColor(ft){const c={root_index:'#4f7fd6',constitution:'#d36b24',project_index:'#2ea043',project_overview:'#2ea043',project_progress:'#1f883d',dev_sessions:'#4f7fd6',dev_sessions_old:'#66758a',tool_l2:'#8250df',tool_l3:'#a371f7',tool_standalone:'#8957e5',archive_index:'#66758a',diary:'#545d68',cheatsheet:'#d36b24',manual:'#d36b24',bookmarks:'#d36b24'};return c[ft]||'#545d68';}
+function getFontColor(){return document.documentElement.getAttribute('data-theme')==='light'?'#1b2433':'#e6edf3';}
 function getFtypeLabel(ft){const m={root_index:'根索引',constitution:'宪法',cheatsheet:'速查卡',manual:'手册',bookmarks:'书签',project_index:'项目索引',project_overview:'项目档案',project_progress:'进度',dev_sessions:'活跃调度',dev_sessions_old:'调度历史',tool_l2:'工具L2',tool_l3:'工具L3',tool_standalone:'工具',archive_index:'归档索引',diary:'日记',root_doc:'文档'};return m[ft]||ft;}
 function getMemoryLevel(p,ft){if(p==='MEMORY.md')return'L1';if(ft==='project_index'||ft==='archive_index'||ft==='tool_l2')return'L2';if(ft==='tool_l3'||ft==='project_overview'||ft==='project_progress'||ft==='dev_sessions'||ft==='dev_sessions_old'||ft==='diary')return'L3';return null;}
 function getNodeColor(ftype,path){const cls=getClassification(path);if(cls==='base')return'#4f7fd6';if(cls==='standalone')return'#d36b24';if(cls==='external')return'#18a6b8';return getGroupColor(ftype);}
@@ -492,7 +493,7 @@ function renderMemoryRefTree(container){
     nodes.push({
       id:f.path,label:baseName(f.path),group:f.type,
       color:{background:getNodeColor(f.type,f.path),border:'#1c1f2e',highlight:{background:getNodeColor(f.type,f.path),border:'#fff'}},
-      font:{color:'#e6edf3',size:10,face:'monospace'},
+      font:{color:getFontColor(),size:10,face:'monospace'},
       shape:'box',margin:5,
       title:f.path+'\n'+getFtypeLabel(f.type),
       level:d
@@ -577,10 +578,10 @@ function renderMemoryDirTree(container){
   const totalLeaves=rootFiles.length+topDirs.reduce((s,d)=>s+countLeaves(d),0);
   const Y_DIR=110,Y_FILE=80,X_UNIT=100,X_MIN=60;
   const projName=S.activeProject?S.activeProject.name:'project';
-  function layoutDir(dir,x,w,depth){const info=dirMap[dir];if(!info)return;const cx=x+w/2,cy=(depth+1)*Y_DIR;nodes.push({id:dir,label:info.name+'/',group:'dir',color:{background:'#1c2129',border:'#30363d'},font:{color:'#b0b8c4',size:11,face:'monospace'},shape:'box',margin:6,x:cx,y:cy});nodeIds.add(dir);const subDirList=[...info.subdirs];if(subDirList.length){const pad=w*0.05,avail=w-pad*2;let sx=x+pad;for(const sd of subDirList){const si=dirMap[sd];if(!si)continue;const sw=Math.max(X_MIN,avail*(si._total/info._total));layoutDir(sd,sx,sw,depth+1);edges.push({from:dir,to:sd,arrows:'to',color:{color:'#252b36'},width:1});sx+=sw;}}if(info.files.length){const fy=cy+Y_DIR*0.55,tw=info.files.length*X_UNIT;let fx=cx-tw/2+X_UNIT/2;for(const f of info.files){nodes.push({id:f.path,label:baseName(f.path),group:f.type,color:{background:getNodeColor(f.type,f.path),border:'#1c1f2e'},font:{color:'#e6edf3',size:10,face:'monospace'},shape:'box',margin:5,x:fx,y:fy});nodeIds.add(f.path);edges.push({from:dir,to:f.path,arrows:'to',color:{color:'#2a3040'},width:1});fx+=X_UNIT;}}}
-  nodes.push({id:'__ROOT__',label:projName,group:'root',color:{background:'#30363d',border:'#58a6ff'},font:{color:'#e6edf3',size:13,face:'monospace',bold:true},shape:'box',margin:8,x:0,y:0});nodeIds.add('__ROOT__');
+  function layoutDir(dir,x,w,depth){const info=dirMap[dir];if(!info)return;const cx=x+w/2,cy=(depth+1)*Y_DIR;nodes.push({id:dir,label:info.name+'/',group:'dir',color:{background:'#1c2129',border:'#30363d'},font:{color:getFontColor(),size:11,face:'monospace'},shape:'box',margin:6,x:cx,y:cy});nodeIds.add(dir);const subDirList=[...info.subdirs];if(subDirList.length){const pad=w*0.05,avail=w-pad*2;let sx=x+pad;for(const sd of subDirList){const si=dirMap[sd];if(!si)continue;const sw=Math.max(X_MIN,avail*(si._total/info._total));layoutDir(sd,sx,sw,depth+1);edges.push({from:dir,to:sd,arrows:'to',color:{color:'#252b36'},width:1});sx+=sw;}}if(info.files.length){const fy=cy+Y_DIR*0.55,tw=info.files.length*X_UNIT;let fx=cx-tw/2+X_UNIT/2;for(const f of info.files){nodes.push({id:f.path,label:baseName(f.path),group:f.type,color:{background:getNodeColor(f.type,f.path),border:'#1c1f2e'},font:{color:getFontColor(),size:10,face:'monospace'},shape:'box',margin:5,x:fx,y:fy});nodeIds.add(f.path);edges.push({from:dir,to:f.path,arrows:'to',color:{color:'#2a3040'},width:1});fx+=X_UNIT;}}}
+  nodes.push({id:'__ROOT__',label:projName,group:'root',color:{background:'#30363d',border:'#58a6ff'},font:{color:getFontColor(),size:13,face:'monospace',bold:true},shape:'box',margin:8,x:0,y:0});nodeIds.add('__ROOT__');
   const totW=Math.max(totalLeaves*X_UNIT,800);let dx=-totW/2;for(const d of topDirs){const sw=Math.max(X_MIN,totW*(dirMap[d]._total/totalLeaves));layoutDir(d,dx,sw,0);edges.push({from:'__ROOT__',to:d,arrows:'to',color:{color:'#252b36'},width:1});dx+=sw;}
-  if(rootFiles.length){const fy=Y_DIR*0.55;let fx=-totW/2+X_UNIT/2;for(const f of rootFiles){nodes.push({id:f.path,label:baseName(f.path),group:f.type,color:{background:getNodeColor(f.type,f.path),border:'#1c1f2e'},font:{color:'#e6edf3',size:10,face:'monospace'},shape:'box',margin:5,x:fx,y:fy});nodeIds.add(f.path);edges.push({from:'__ROOT__',to:f.path,arrows:'to',color:{color:'#2a3040'},width:1});fx+=X_UNIT;}}
+  if(rootFiles.length){const fy=Y_DIR*0.55;let fx=-totW/2+X_UNIT/2;for(const f of rootFiles){nodes.push({id:f.path,label:baseName(f.path),group:f.type,color:{background:getNodeColor(f.type,f.path),border:'#1c1f2e'},font:{color:getFontColor(),size:10,face:'monospace'},shape:'box',margin:5,x:fx,y:fy});nodeIds.add(f.path);edges.push({from:'__ROOT__',to:f.path,arrows:'to',color:{color:'#2a3040'},width:1});fx+=X_UNIT;}}
   const data={nodes:new vis.DataSet(nodes),edges:new vis.DataSet(edges)};const opts={physics:{enabled:false},interaction:{dragNodes:false,hover:true,navigationButtons:true,keyboard:true},edges:{smooth:false}};
   if(S.netDirTree)S.netDirTree.destroy();S.netDirTree=new vis.Network(container,data,opts);
   setTimeout(()=>{if(S.netDirTree)S.netDirTree.fit({animation:{duration:300}});},500);
@@ -596,7 +597,7 @@ function renderDepGraph(){
   const CLS=['base','standalone'];const clsCount={base:0,standalone:0},clsIndex={};
   for(const n of gNodes){const cls=getClassification(n.id);if(cls in clsCount){clsIndex[n.id]=clsCount[cls];clsCount[cls]++;}}
   const X_GAP=150,Y_TOP=-350,Y_GAP=120;
-  const nodesArr=gNodes.map(n=>{const base={id:n.id,label:baseName(n.id),group:n.group,title:n.title,color:{background:getNodeColor(n.group,n.id),border:'#1c1f2e',highlight:{background:getNodeColor(n.group,n.id),border:'#fff'}},font:{color:'#e6edf3',size:11,face:'monospace'},shape:'box',margin:5};const cls=getClassification(n.id);if(cls in clsCount){const idx=CLS.indexOf(cls);base.x=(clsIndex[n.id]-(clsCount[cls]-1)/2)*X_GAP;base.y=Y_TOP+idx*Y_GAP;}if(n.is_external){base.shapeProperties={borderDashes:[5,5]};base.borderWidth=2;}return base;});
+  const nodesArr=gNodes.map(n=>{const base={id:n.id,label:baseName(n.id),group:n.group,title:n.title,color:{background:getNodeColor(n.group,n.id),border:'#1c1f2e',highlight:{background:getNodeColor(n.group,n.id),border:'#fff'}},font:{color:getFontColor(),size:11,face:'monospace'},shape:'box',margin:5};const cls=getClassification(n.id);if(cls in clsCount){const idx=CLS.indexOf(cls);base.x=(clsIndex[n.id]-(clsCount[cls]-1)/2)*X_GAP;base.y=Y_TOP+idx*Y_GAP;}if(n.is_external){base.shapeProperties={borderDashes:[5,5]};base.borderWidth=2;}return base;});
   const nodes=new vis.DataSet(nodesArr);const edgeSet=new Set(gEdges.map(e=>e.from+'|||'+e.to));
   const edgesArr=[];const seenBiDep=new Set();
   for(const e of gEdges){
@@ -606,7 +607,7 @@ function renderDepGraph(){
       if(seenBiDep.has(key)) continue;
       seenBiDep.add(key);
     }
-    const edgeObj={from:e.from,to:e.to,label:e.label,title:e.title,arrows:isBi?'to,from':'to',color:{color:'#3a3d4e',highlight:'#58a6ff'},font:{color:'#8b949e',size:9,align:'middle'},width:1,smooth:{type:'continuous',roundness:0.3}};if(e.is_external){edgeObj.dashes=true;edgeObj.color={color:'#6e7681',highlight:'#d29922'};}edgesArr.push(edgeObj);
+    const edgeObj={from:e.from,to:e.to,label:e.label,title:e.title,arrows:isBi?'to,from':'to',color:{color:'#3a3d4e',highlight:'#58a6ff'},font:{color:getFontColor(),size:9,align:'middle'},width:1,smooth:{type:'continuous',roundness:0.3}};if(e.is_external){edgeObj.dashes=true;edgeObj.color={color:'#6e7681',highlight:'#d29922'};}edgesArr.push(edgeObj);
   }
   const edges=new vis.DataSet(edgesArr);
   const savedPos=lsGet('dep_positions');
