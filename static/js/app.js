@@ -61,8 +61,8 @@ function isFileVisible(path) {
   return true;
 }
 function isVisibleInGraph(path) {
-  // External and hidden files never appear in graphs
-  if (isExternalFile(path) || isHiddenFile(path)) return false;
+  // Classification only affects filter toggles and colors — not graph membership.
+  // Reference relationships determine layout position.
   const s=getSettings();
   if (s.displayMode==='ref' && s.activeRoot) { if (!S.reachableSet.has(path)) return false; }
   return isFileVisible(path);
