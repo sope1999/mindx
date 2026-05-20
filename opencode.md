@@ -1,7 +1,7 @@
 # mindx 开发文档（v4.4）
 
 > ⚠️ **AI 开发规则（不可跳过）：**
-> 1. 改代码必须走 hephaestus agent 或 `task(category="quick")`
+> 1. 改代码必须走 task agent：小改动 `task(category="quick")`，复杂重构 `task(category="deep")`
 > 2. 每次改动后立即 `git add -A && git commit -m "描述"`，commit before next action
 > 3. 不直接 edit/write，不跳过验证，不跳过 git
 
