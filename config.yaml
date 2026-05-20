@@ -56,11 +56,11 @@ projects:
         x: -81
         y: 220
       memory/tools/full/claude-code-full.md:
-        x: -414
-        y: -225
+        x: -200
+        y: -356
       memory/tools/full/opencode-full.md:
-        x: -294
-        y: -324
+        x: -388
+        y: -132
       memory/projects/aviation/dev-sessions-old.md:
         x: 410
         y: 160
