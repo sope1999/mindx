@@ -503,8 +503,14 @@ function renderMemoryRefTree(container){
   // Use ALL graph edges (covers tree edges + cross-references)
   const edgeData=(S.graphData.edges||[]).filter(e=>visiblePaths.has(e.from)&&visiblePaths.has(e.to));
   const edgeSet=new Set(edgeData.map(e=>e.from+'|||'+e.to));
+  const seenBi=new Set();
   for(const e of edgeData){
     const isBi=edgeSet.has(e.to+'|||'+e.from);
+    if(isBi){
+      const key=[e.from,e.to].sort().join('|||');
+      if(seenBi.has(key)) continue;
+      seenBi.add(key);
+    }
     edges.push({
       from:e.from,to:e.to,
       arrows:isBi?'to,from':'to',
@@ -591,7 +597,17 @@ function renderDepGraph(){
   const X_GAP=150,Y_TOP=-350,Y_GAP=120;
   const nodesArr=gNodes.map(n=>{const base={id:n.id,label:baseName(n.id),group:n.group,title:n.title,color:{background:getNodeColor(n.group,n.id),border:'#1c1f2e',highlight:{background:getNodeColor(n.group,n.id),border:'#fff'}},font:{color:'#c9d1d9',size:10,face:'monospace'},shape:'box',margin:5};const cls=getClassification(n.id);if(cls in clsCount){const idx=CLS.indexOf(cls);base.x=(clsIndex[n.id]-(clsCount[cls]-1)/2)*X_GAP;base.y=Y_TOP+idx*Y_GAP;}if(n.is_external){base.shapeProperties={borderDashes:[5,5]};base.borderWidth=2;}return base;});
   const nodes=new vis.DataSet(nodesArr);const edgeSet=new Set(gEdges.map(e=>e.from+'|||'+e.to));
-  const edges=new vis.DataSet(gEdges.map(e=>{const isBi=edgeSet.has(e.to+'|||'+e.from);const edgeObj={from:e.from,to:e.to,label:e.label,title:e.title,arrows:isBi?'to,from':'to',color:{color:'#3a3d4e',highlight:'#58a6ff'},font:{color:'#6e7681',size:8,align:'middle'},width:1,smooth:{type:'continuous',roundness:0.3}};if(e.is_external){edgeObj.dashes=true;edgeObj.color={color:'#6e7681',highlight:'#d29922'};}return edgeObj;}));
+  const edgesArr=[];const seenBiDep=new Set();
+  for(const e of gEdges){
+    const isBi=edgeSet.has(e.to+'|||'+e.from);
+    if(isBi){
+      const key=[e.from,e.to].sort().join('|||');
+      if(seenBiDep.has(key)) continue;
+      seenBiDep.add(key);
+    }
+    const edgeObj={from:e.from,to:e.to,label:e.label,title:e.title,arrows:isBi?'to,from':'to',color:{color:'#3a3d4e',highlight:'#58a6ff'},font:{color:'#6e7681',size:8,align:'middle'},width:1,smooth:{type:'continuous',roundness:0.3}};if(e.is_external){edgeObj.dashes=true;edgeObj.color={color:'#6e7681',highlight:'#d29922'};}edgesArr.push(edgeObj);
+  }
+  const edges=new vis.DataSet(edgesArr);
   const savedPos=lsGet('dep_positions');
   const opts={physics:{solver:'forceAtlas2Based',forceAtlas2Based:{gravitationalConstant:-40,centralGravity:0.005,springLength:150,springConstant:0.08},stabilization:{iterations:200}},layout:{improvedLayout:true,randomSeed:42},interaction:{hover:true,navigationButtons:true,keyboard:true}};
   if(S.netDepGraph)S.netDepGraph.destroy();S.netDepGraph=new vis.Network(container,{nodes,edges},opts);
