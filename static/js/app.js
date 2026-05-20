@@ -753,6 +753,12 @@ if(savedFilters){
   if('showStandalone' in savedFilters) S.showStandalone=savedFilters.showStandalone;
   if('showExternal' in savedFilters) S.showExternal=savedFilters.showExternal;
   if('showHidden' in savedFilters) S.showHidden=savedFilters.showHidden;
+  // Sync restored S values to DOM checkboxes
+  document.querySelectorAll('[id*="show-core"],[id*="-core"]').forEach(cb=>cb.checked=S.showCore);
+  document.querySelectorAll('.filter-base,[id*="-base"]').forEach(cb=>cb.checked=S.showBase);
+  document.querySelectorAll('.filter-standalone,[id*="-standalone"]').forEach(cb=>cb.checked=S.showStandalone);
+  document.querySelectorAll('.filter-external').forEach(cb=>cb.checked=S.showExternal);
+  document.querySelectorAll('.filter-hidden').forEach(cb=>cb.checked=S.showHidden);
 }
 connectSocket();
 
