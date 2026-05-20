@@ -96,7 +96,10 @@
           <span class="toolbar-sep"></span>
           <button id="btn-ref-save" class="btn btn-xs" title="保存布局">💾 保存</button>
         </div>
-        <div id="ref-tree-container" class="graph-container"></div>
+        <div class="graph-wrapper" id="ref-tree-wrapper">
+          <div id="ref-tree-container" class="graph-container"></div>
+          <div class="graph-resize-handle" data-target="ref-tree-container" data-wrapper="ref-tree-wrapper" title="拖动调整高度"></div>
+        </div>
         <div class="view-hint">引用层级视图 — 点击节点选中文件</div>
       </div>
 
@@ -108,7 +111,10 @@
           <span class="toolbar-sep"></span>
           <button id="btn-dir-save" class="btn btn-xs" title="保存布局">💾 保存</button>
         </div>
-        <div id="dir-tree-container" class="graph-container"></div>
+        <div class="graph-wrapper" id="dir-tree-wrapper">
+          <div id="dir-tree-container" class="graph-container"></div>
+          <div class="graph-resize-handle" data-target="dir-tree-container" data-wrapper="dir-tree-wrapper" title="拖动调整高度"></div>
+        </div>
         <div class="view-hint">目录层级视图 — 点击节点选中文件</div>
       </div>
 
@@ -120,7 +126,10 @@
           <span class="toolbar-sep"></span>
           <button id="btn-dep-save" class="btn btn-xs" title="保存当前依赖图布局">💾 保存</button>
         </div>
-        <div id="dep-graph-container"></div>
+        <div class="graph-wrapper" id="dep-graph-wrapper">
+          <div id="dep-graph-container"></div>
+          <div class="graph-resize-handle" data-target="dep-graph-container" data-wrapper="dep-graph-wrapper" title="拖动调整高度"></div>
+        </div>
         <div id="dep-graph-legend" class="legend"></div>
       </div>
 

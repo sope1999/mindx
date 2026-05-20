@@ -391,10 +391,29 @@ html, body {
 .tab-content.active { display: flex; }
 
 /* ── Graph containers ──────────────────────────── */
-#ref-tree-container, #dir-tree-container, #dep-graph-container {
+.graph-wrapper {
   flex: 1;
+  position: relative;
+  overflow: hidden;
+  min-height: 120px;
+}
+.graph-resize-handle {
+  height: 6px;
+  cursor: ns-resize;
+  background: var(--border);
+  border-top: 1px solid var(--text-dim);
+  border-bottom: 1px solid var(--text-dim);
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
+}
+.graph-resize-handle:hover { background: var(--accent); }
+#ref-tree-container, #dir-tree-container, #dep-graph-container {
+  width: 100%;
+  height: 100%;
   background: var(--bg);
-  min-height: 300px;
 }
 .view-hint {
   padding: 4px 12px;

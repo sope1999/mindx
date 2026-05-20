@@ -8,98 +8,77 @@ projects:
   positions:
     dep_positions:
       AGENTS.md:
-        x: -418
-        y: -142
+        x: -381
+        y: -95
       HEARTBEAT.md:
-        x: -194
-        y: -338
+        x: -171
+        y: -264
       IDENTITY.md:
-        x: 97
-        y: -438
+        x: 68
+        y: -367
       MEMORY.md:
-        x: -36
-        y: 98
+        x: -18
+        y: 20
       SOUL.md:
-        x: 336
-        y: -244
-      TOOLS.md:
-        x: -231
-        y: -31
-      urls.md:
-        x: -159
-        y: -94
+        x: 303
+        y: -218
       USER.md:
-        x: 437
-        y: -108
-      任务工作规则.md:
-        x: -47
-        y: -123
-      项目开发工作规则.md:
-        x: 151
-        y: -41
-      项目开发管理方案.md:
-        x: 413
-        y: 160
-      memory/archive/_index.md:
-        x: 111
-        y: 293
+        x: 397
+        y: -67
       memory/projects/projects_index.md:
-        x: 85
-        y: -118
+        x: 172
+        y: -112
       memory/tools/claude-code.md:
-        x: -161
-        y: 297
+        x: -111
+        y: 232
       memory/tools/cron.md:
-        x: 199
-        y: 147
+        x: 201
+        y: 97
       memory/tools/napcat.md:
-        x: 35
-        y: 328
+        x: 85
+        y: 237
       memory/tools/opencode.md:
-        x: -50
-        y: 339
+        x: 0
+        y: 261
       memory/tools/ragflow.md:
-        x: -267
-        y: 46
+        x: -219
+        y: -70
       memory/tools/search.md:
-        x: 194
-        y: 54
+        x: 204
+        y: -25
       memory/tools/system.md:
-        x: -227
-        y: 227
-      memory/tools/urls.md:
-        x: 50
+        x: -197
         y: 158
+      memory/tools/urls.md:
+        x: 42
+        y: 102
       memory/tools/vcp.md:
-        x: 169
-        y: 230
+        x: 159
+        y: 183
       memory/tools/warning.md:
-        x: -266
-        y: 132
+        x: -243
+        y: 45
       memory/tools/full/claude-code-full.md:
-        x: -382
-        y: 228
+        x: -334
+        y: 188
       memory/tools/full/opencode-full.md:
-        x: -255
-        y: 424
+        x: -187
+        y: 377
       memory/projects/aviation/dev-sessions-old.md:
-        x: -192
-        y: -458
+        x: -135
+        y: -379
       memory/projects/aviation/dev-sessions.md:
-        x: -231
-        y: -238
+        x: -260
+        y: -190
       memory/projects/aviation/overview.md:
-        x: -9
-        y: -336
+        x: -33
+        y: -182
       memory/projects/aviation/PROJECT_PROGRESS.md:
-        x: 218
-        y: -337
+        x: 167
+        y: -281
       memory/projects/transforman/overview.md:
-        x: 309
-        y: -56
-      claude/ubuclaude/claude会话清单.md:
-        x: -2
-        y: -241
+        x: 332
+        y: 63
     dirtree_positions:
       __ROOT__:
         x: 0
@@ -209,6 +188,79 @@ projects:
       项目开发管理方案.md:
         x: -750
         y: 60
+    reftree_positions:
+      AGENTS.md:
+        x: -800
+        y: -150
+      HEARTBEAT.md:
+        x: -650
+        y: -150
+      IDENTITY.md:
+        x: -500
+        y: -150
+      MEMORY.md:
+        x: 0
+        y: -150
+      SOUL.md:
+        x: 500
+        y: -150
+      USER.md:
+        x: 650
+        y: -150
+      memory/projects/projects_index.md:
+        x: -245
+        y: -50
+      memory/tools/claude-code.md:
+        x: -350
+        y: -50
+      memory/tools/cron.md:
+        x: 210
+        y: -50
+      memory/tools/napcat.md:
+        x: 70
+        y: -50
+      memory/tools/opencode.md:
+        x: -140
+        y: -50
+      memory/tools/ragflow.md:
+        x: 140
+        y: -50
+      memory/tools/search.md:
+        x: 280
+        y: -50
+      memory/tools/system.md:
+        x: -70
+        y: -50
+      memory/tools/urls.md:
+        x: 800
+        y: -150
+      memory/tools/vcp.md:
+        x: 350
+        y: -50
+      memory/tools/warning.md:
+        x: 0
+        y: -50
+      memory/tools/full/claude-code-full.md:
+        x: -436
+        y: 50
+      memory/tools/full/opencode-full.md:
+        x: -62
+        y: 50
+      memory/projects/aviation/dev-sessions-old.md:
+        x: -260
+        y: 150
+      memory/projects/aviation/dev-sessions.md:
+        x: -48
+        y: 150
+      memory/projects/aviation/overview.md:
+        x: -280
+        y: 50
+      memory/projects/aviation/PROJECT_PROGRESS.md:
+        x: -415
+        y: 150
+      memory/projects/transforman/overview.md:
+        x: -159
+        y: 50
   file_classes: {}
   excluded_dirs:
   - C:/SOFT/AI/coder/temp/

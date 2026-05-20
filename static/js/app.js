@@ -664,3 +664,30 @@ document.getElementById('btn-classify-default').addEventListener('click',()=>{co
 function updateClock(){const t=new Date();document.getElementById('footer-time').textContent=t.toLocaleTimeString('zh-CN');}
 setInterval(updateClock,1000);updateClock();
 connectSocket();
+
+// ── Graph panel resize ──
+(function(){
+  let dragHandle=null, dragWrapper=null, startY=0, startH=0;
+  document.addEventListener('mousedown',e=>{
+    if(!e.target.classList.contains('graph-resize-handle'))return;
+    dragHandle=e.target; dragWrapper=dragHandle.parentElement;
+    // Capture current height before switching from flex to fixed
+    startH=dragWrapper.offsetHeight;
+    dragWrapper.style.height=startH+'px';
+    startY=e.clientY;
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove',e=>{
+    if(!dragHandle)return;
+    const dy=e.clientY-startY, newH=Math.max(120,startH+dy);
+    dragWrapper.style.height=newH+'px';
+    // Resize vis-network to fit
+    const netId=dragHandle.dataset.target;
+    ['netRefTree','netDirTree','netDepGraph'].forEach(key=>{
+      const net=S[key]; if(!net)return;
+      const container=document.getElementById(netId);
+      if(container&&container.parentElement===dragWrapper)net.redraw();
+    });
+  });
+  document.addEventListener('mouseup',()=>{dragHandle=null;dragWrapper=null;});
+})();
