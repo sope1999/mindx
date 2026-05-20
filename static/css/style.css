@@ -21,14 +21,14 @@
 }
 
 [data-theme="light"] {
-  --bg: #ffffff;
-  --bg-panel: #f6f8fa;
+  --bg: #eef5ff;
+  --bg-panel: #f7faff;
   --bg-card: #ffffff;
-  --bg-hover: #e8eaed;
-  --border: #d0d7de;
-  --text: #1f2328;
-  --text-dim: #656d76;
-  --accent: #0969da;
+  --bg-hover: #eaf2ff;
+  --border: #d8e3f0;
+  --text: #1b2433;
+  --text-dim: #66758a;
+  --accent: #4f7fd6;
   --accent2: #8250df;
   --shadow: 0 1px 3px rgba(0,0,0,0.1);
 }

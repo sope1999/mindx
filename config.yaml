@@ -56,29 +56,29 @@ projects:
         x: -81
         y: 220
       memory/tools/full/claude-code-full.md:
-        x: -449
-        y: -228
+        x: -200
+        y: -356
       memory/tools/full/opencode-full.md:
-        x: -370
-        y: -341
+        x: -388
+        y: -132
       memory/projects/aviation/dev-sessions-old.md:
-        x: 456
-        y: 192
+        x: 410
+        y: 160
       memory/projects/aviation/dev-sessions.md:
-        x: 218
-        y: 227
+        x: 193
+        y: 190
       memory/projects/aviation/overview.md:
-        x: 332
-        y: 54
+        x: 298
+        y: -19
       memory/projects/aviation/PROJECT_PROGRESS.md:
-        x: 394
-        y: -110
+        x: 319
+        y: -241
       memory/projects/transforman/overview.md:
         x: 39
         y: 354
       claude/ubuclaude/claude会话清单.md:
-        x: 344
-        y: 358
+        x: 343
+        y: 336
     dirtree_positions:
       __ROOT__:
         x: 0

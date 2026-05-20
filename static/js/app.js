@@ -91,10 +91,10 @@ function isVisibleInGraph(path) {
 
 // ── Utils ──
 function getFileIcon(ft){const m={root_index:'🏠',constitution:'📜',cheatsheet:'📋',manual:'📖',bookmarks:'🔖',project_index:'📊',project_overview:'📝',project_progress:'📈',dev_sessions:'🔄',dev_sessions_old:'📦',tool_l2:'⚙️',tool_l3:'📚',tool_standalone:'🔧',archive_index:'🗄',diary:'📅',root_doc:'📄'};return m[ft]||'📄';}
-function getGroupColor(ft){const c={root_index:'#58a6ff',constitution:'#db6d28',project_index:'#3fb950',project_overview:'#3fb950',project_progress:'#2ea043',dev_sessions:'#1f6feb',dev_sessions_old:'#6e7681',tool_l2:'#7c3aed',tool_l3:'#a371f7',tool_standalone:'#8957e5',archive_index:'#6e7681',diary:'#545d68',cheatsheet:'#d29922',manual:'#d29922',bookmarks:'#d29922'};return c[ft]||'#545d68';}
+function getGroupColor(ft){const c={root_index:'#4f7fd6',constitution:'#d36b24',project_index:'#2ea043',project_overview:'#2ea043',project_progress:'#1f883d',dev_sessions:'#4f7fd6',dev_sessions_old:'#66758a',tool_l2:'#8250df',tool_l3:'#a371f7',tool_standalone:'#8957e5',archive_index:'#66758a',diary:'#545d68',cheatsheet:'#d36b24',manual:'#d36b24',bookmarks:'#d36b24'};return c[ft]||'#545d68';}
 function getFtypeLabel(ft){const m={root_index:'根索引',constitution:'宪法',cheatsheet:'速查卡',manual:'手册',bookmarks:'书签',project_index:'项目索引',project_overview:'项目档案',project_progress:'进度',dev_sessions:'活跃调度',dev_sessions_old:'调度历史',tool_l2:'工具L2',tool_l3:'工具L3',tool_standalone:'工具',archive_index:'归档索引',diary:'日记',root_doc:'文档'};return m[ft]||ft;}
 function getMemoryLevel(p,ft){if(p==='MEMORY.md')return'L1';if(ft==='project_index'||ft==='archive_index'||ft==='tool_l2')return'L2';if(ft==='tool_l3'||ft==='project_overview'||ft==='project_progress'||ft==='dev_sessions'||ft==='dev_sessions_old'||ft==='diary')return'L3';return null;}
-function getNodeColor(ftype,path){const cls=getClassification(path);if(cls==='base')return'#db6d28';if(cls==='standalone')return'#d29922';if(cls==='external')return'#6e7681';return getGroupColor(ftype);}
+function getNodeColor(ftype,path){const cls=getClassification(path);if(cls==='base')return'#4f7fd6';if(cls==='standalone')return'#d36b24';if(cls==='external')return'#18a6b8';return getGroupColor(ftype);}
 function parentDir(p){const i=p.lastIndexOf('/');return i<0?'':p.slice(0,i+1);}
 function baseName(p){const i=p.lastIndexOf('/');return i<0?p:p.slice(i+1);}
 function pkey(k){return 'mindx_'+(S.activeProject?S.activeProject.name+'_':'')+k;}
