@@ -488,18 +488,33 @@ function renderMemoryRefTree(container){
   // Sort nodes by (level, name) for consistent level-internal ordering
   nodes.sort((a,b)=>a.level-b.level||a.label.localeCompare(b.label));
 
+  // Manual positioning by DAG level
+  const levelNodes={};
+  for(const n of nodes){const lv=n.level;if(!levelNodes[lv])levelNodes[lv]=[];levelNodes[lv].push(n);}
+  for(const lv of Object.keys(levelNodes)){levelNodes[lv].sort((a,b)=>a.label.localeCompare(b.label));}
+  const X_GAP=120,Y_GAP=180;
+  const allLevels=Object.keys(levelNodes).map(Number).sort((a,b)=>a-b);
+  const minLv=allLevels[0],maxLv=allLevels[allLevels.length-1];
+  const totalLevels=maxLv-minLv+1;
+  const Y_TOP=-(totalLevels-1)*Y_GAP/2;
+  for(const lv of allLevels){
+    const arr=levelNodes[lv];
+    const y=Y_TOP+(lv-minLv)*Y_GAP;
+    const totalW=(arr.length-1)*X_GAP;
+    let x=-totalW/2;
+    for(const n of arr){n.x=x;n.y=y;x+=X_GAP;}
+  }
+
   if(!nodes.length)return;
   const data={nodes:new vis.DataSet(nodes),edges:new vis.DataSet(edges)};
   const savedPos=lsGet('reftree_positions');
   const opts={
-    layout:{hierarchical:{enabled:true,direction:'UD',sortMethod:'directed',levelSeparation:180,nodeSpacing:120,treeSpacing:150,blockShifting:true,edgeMinimization:true}},
+    layout:{improvedLayout:false,randomSeed:42},
     physics:{enabled:false},
     interaction:{dragNodes:true,hover:true,navigationButtons:true,keyboard:true}
   };
   if(S.netRefTree)S.netRefTree.destroy();
   S.netRefTree=new vis.Network(container,data,opts);
-  // After first draw, disable hierarchical so users can freely drag y-axis
-  S.netRefTree.once('afterDrawing',()=>{S.netRefTree.setOptions({layout:{hierarchical:false}});});
   if(savedPos){try{const nds=data.nodes;for(const n of nodes){if(savedPos[n.id])nds.update({id:n.id,x:savedPos[n.id].x,y:savedPos[n.id].y});}}catch(e){}}
   S.netRefTree.on('dragEnd',()=>{saveRefTreePositions();});
   S.netRefTree.on('click',params=>{if(params.nodes.length>0){const id=params.nodes[0];if(id!=='__ROOT__'&&!id.endsWith('/'))selectFile(id);}});
