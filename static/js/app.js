@@ -79,13 +79,7 @@ function isFileVisible(path) {
 function isVisibleInGraph(path) {
   const s=getSettings();
   if (s.displayMode==='ref' && s.activeRoot) { if (!S.reachableSet.has(path)) return false; }
-  if (!isFileVisible(path)) return false;
-  // Graphs always follow ref-mode rules: external files need reference relationships
-  if (isExternalFile(path) && S.graphData) {
-    const hasEdges = (S.graphData.edges || []).some(e => e.from === path || e.to === path);
-    if (!hasEdges) return false;
-  }
-  return true;
+  return isFileVisible(path);
 }
 
 // ── Utils ──
@@ -469,6 +463,13 @@ function computeRefLevels(graphData, visiblePaths) {
 function renderMemoryRefTree(container){
   const nodes=[],edges=[],nodeIds=new Set();
   const visiblePaths=new Set(S.files.filter(f=>isVisibleInGraph(f.path)).map(f=>f.path));
+  // Ref tree graph: exclude external files without reference relationships
+  for (const p of visiblePaths) {
+    if (isExternalFile(p) && S.graphData) {
+      const hasEdges = (S.graphData.edges || []).some(e => e.from === p || e.to === p);
+      if (!hasEdges) visiblePaths.delete(p);
+    }
+  }
   if(!visiblePaths.size)return;
   
   // Compute DAG levels (longest reference path, isolated=-1)
