@@ -547,6 +547,7 @@ function renderMemoryRefTree(container){
   const opts={
     layout:{improvedLayout:false,randomSeed:42},
     physics:{enabled:false},
+    edges:{arrows:{to:{enabled:true},from:{enabled:true}}},
     interaction:{dragNodes:true,hover:true,navigationButtons:true,keyboard:true}
   };
   if(S.netRefTree)S.netRefTree.destroy();
@@ -609,7 +610,7 @@ function renderDepGraph(){
   }
   const edges=new vis.DataSet(edgesArr);
   const savedPos=lsGet('dep_positions');
-  const opts={physics:{solver:'forceAtlas2Based',forceAtlas2Based:{gravitationalConstant:-40,centralGravity:0.005,springLength:150,springConstant:0.08},stabilization:{iterations:200}},layout:{improvedLayout:true,randomSeed:42},interaction:{hover:true,navigationButtons:true,keyboard:true}};
+  const opts={physics:{solver:'forceAtlas2Based',forceAtlas2Based:{gravitationalConstant:-40,centralGravity:0.005,springLength:150,springConstant:0.08},stabilization:{iterations:200}},layout:{improvedLayout:true,randomSeed:42},edges:{arrows:{to:{enabled:true},from:{enabled:true}}},interaction:{hover:true,navigationButtons:true,keyboard:true}};
   if(S.netDepGraph)S.netDepGraph.destroy();S.netDepGraph=new vis.Network(container,{nodes,edges},opts);
   if(savedPos){try{for(const n of nodesArr){if(savedPos[n.id])nodes.update({id:n.id,x:savedPos[n.id].x,y:savedPos[n.id].y});}}catch(e){}}
   let stabilized=false;S.netDepGraph.on('stabilized',()=>{if(!stabilized){stabilized=true;S.netDepGraph.setOptions({physics:false});saveDepPositions();}});
