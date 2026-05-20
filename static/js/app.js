@@ -14,9 +14,6 @@ const S = {
   devMode: true,
 };
 
-const BASE_DEFAULT = new Set(['AGENTS.md','SOUL.md','USER.md','IDENTITY.md','HEARTBEAT.md']);
-const STANDALONE_DEFAULT = new Set(['TOOLS.md','urls.md','项目开发工作规则.md','任务工作规则.md','项目开发管理方案.md']);
-
 // Theme
 (function(){
   const saved=localStorage.getItem('mindx_theme')||'dark';
@@ -31,22 +28,17 @@ function getClassification(path) {
   return getDefaultClassification(path);
 }
 function getDefaultClassification(path) {
-  // Reference-tree-based classification (universal, no hardcoded filenames)
-  if (!S.graphData || !S.graphData.edges) {
-    // Fallback: graph not loaded yet
-    if (BASE_DEFAULT.has(path)) return 'base';
-    if (STANDALONE_DEFAULT.has(path)) return 'standalone';
-    return 'external';
-  }
+  // Pure reference-tree-based classification
+  if (!S.graphData || !S.graphData.edges) return 'core';
   const edges = S.graphData.edges || [];
   let indeg = 0, outdeg = 0;
   for (const e of edges) {
     if (e.to === path) indeg++;
     if (e.from === path) outdeg++;
   }
-  if (indeg === 0 && outdeg === 0) return 'standalone';  // isolated
-  if (indeg === 0 && outdeg > 0) return 'base';           // root, source of references
-  return 'core';                                           // referenced by others
+  if (indeg === 0 && outdeg === 0) return 'standalone';
+  if (indeg === 0 && outdeg > 0) return 'base';
+  return 'core';
 }
 function setClassification(path, cls) {
   const overrides = lsGet('file_classes') || {};
