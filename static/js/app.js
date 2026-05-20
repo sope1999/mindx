@@ -14,6 +14,8 @@ const S = {
   devMode: true,
 };
 
+const BASE_DEFAULT = new Set(['AGENTS.md','SOUL.md','USER.md','IDENTITY.md','HEARTBEAT.md']);
+
 // Theme
 (function(){
   const saved=localStorage.getItem('mindx_theme')||'dark';
@@ -28,9 +30,10 @@ function getClassification(path) {
   return getDefaultClassification(path);
 }
 function getDefaultClassification(path) {
-  // Pure reference-tree-based classification
+  // Universal base files (same across all OpenCode projects)
+  if (BASE_DEFAULT.has(path)) return 'base';
+  // Reference-tree-based for everything else
   if (!S.graphData || !S.graphData.edges) return 'external';
-  // Check if externally mounted file (outside project root)
   const node = (S.graphData.nodes || []).find(n => n.id === path);
   if (node && node.is_external) return 'external';
   const edges = S.graphData.edges || [];
