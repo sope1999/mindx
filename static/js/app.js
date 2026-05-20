@@ -43,7 +43,6 @@ function getDefaultClassification(path) {
     if (e.from === path) outdeg++;
   }
   if (indeg === 0 && outdeg === 0) return 'standalone';
-  if (indeg === 0 && outdeg > 0) return 'base';
   return 'core';
 }
 function setClassification(path, cls) {
