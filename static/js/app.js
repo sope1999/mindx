@@ -11,6 +11,7 @@ const S = {
   selectMode: false,
   selectedFiles: new Set(),
   reachableSet: new Set(),
+  devMode: true,
 };
 
 const BASE_DEFAULT = new Set(['AGENTS.md','SOUL.md','USER.md','IDENTITY.md','HEARTBEAT.md']);
@@ -506,8 +507,8 @@ function renderMemoryRefTree(container){
   }
 
   if(!nodes.length)return;
-  // Merge saved positions into node data BEFORE creating DataSet
-  const savedPos=lsGet('reftree_positions');
+  // Merge saved positions only when dev mode is OFF
+  const savedPos=S.devMode?null:lsGet('reftree_positions');
   if(savedPos){for(const n of nodes){if(savedPos[n.id]){n.x=savedPos[n.id].x;n.y=savedPos[n.id].y;}}}
   const data={nodes:new vis.DataSet(nodes),edges:new vis.DataSet(edges)};
   const opts={
@@ -564,7 +565,7 @@ function renderDepGraph(){
   const nodesArr=gNodes.map(n=>{const base={id:n.id,label:baseName(n.id),group:n.group,title:n.title,color:{background:getNodeColor(n.group,n.id),border:'#1c1f2e',highlight:{background:getNodeColor(n.group,n.id),border:'#fff'}},font:{color:'#c9d1d9',size:10,face:'monospace'},shape:'box',margin:5};const cls=getClassification(n.id);if(cls in clsCount){const idx=CLS.indexOf(cls);base.x=(clsIndex[n.id]-(clsCount[cls]-1)/2)*X_GAP;base.y=Y_TOP+idx*Y_GAP;}if(n.is_external){base.shapeProperties={borderDashes:[5,5]};base.borderWidth=2;}return base;});
   const nodes=new vis.DataSet(nodesArr);const edgeSet=new Set(gEdges.map(e=>e.from+'|||'+e.to));
   const edges=new vis.DataSet(gEdges.map(e=>{const isBi=edgeSet.has(e.to+'|||'+e.from);const edgeObj={from:e.from,to:e.to,label:e.label,title:e.title,arrows:isBi?'to,from':'to',color:{color:'#3a3d4e',highlight:'#58a6ff'},font:{color:'#6e7681',size:8,align:'middle'},width:1,smooth:{type:'continuous',roundness:0.3}};if(e.is_external){edgeObj.dashes=true;edgeObj.color={color:'#6e7681',highlight:'#d29922'};}return edgeObj;}));
-  const savedPos=lsGet('dep_positions');
+  const savedPos=S.devMode?null:lsGet('dep_positions');
   const opts={physics:{solver:'forceAtlas2Based',forceAtlas2Based:{gravitationalConstant:-40,centralGravity:0.005,springLength:150,springConstant:0.08},stabilization:{iterations:200}},layout:{improvedLayout:true,randomSeed:42},interaction:{hover:true,navigationButtons:true,keyboard:true}};
   if(S.netDepGraph)S.netDepGraph.destroy();S.netDepGraph=new vis.Network(container,{nodes,edges},opts);
   if(savedPos){try{for(const n of nodesArr){if(savedPos[n.id])nodes.update({id:n.id,x:savedPos[n.id].x,y:savedPos[n.id].y});}}catch(e){}}
@@ -668,6 +669,8 @@ document.querySelectorAll('.filter-standalone').forEach(cb=>cb.addEventListener(
 document.querySelectorAll('.filter-external').forEach(cb=>cb.addEventListener('change',e=>onFilterChange(e)));
 document.querySelectorAll('.filter-hidden').forEach(cb=>cb.addEventListener('change',e=>onFilterChange(e)));
 ['chk-ref-base','chk-ref-standalone','chk-dir-base','chk-dir-standalone','chk-dep-base','chk-dep-standalone'].forEach(id=>{const cb=document.getElementById(id);if(cb)cb.addEventListener('change',e=>onFilterChange(e));});
+// Dev mode toggle: when ON, ignore saved positions and use computed layout
+const chkDev=document.getElementById('chk-ref-dev'); if(chkDev){chkDev.checked=S.devMode;chkDev.addEventListener('change',()=>{S.devMode=chkDev.checked;renderRefTreeGraph();});}
 document.getElementById('btn-tree-ref').addEventListener('click',()=>{S.treeMode='ref';updateTreeButtons();renderFileTree();});
 document.getElementById('btn-tree-dir').addEventListener('click',()=>{S.treeMode='dir';updateTreeButtons();renderFileTree();});
 document.getElementById('btn-tree-select').addEventListener('click',toggleSelectMode);
