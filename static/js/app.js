@@ -408,8 +408,18 @@ function computeRefLevels(graphData, visiblePaths) {
     }
     queue = next;
   }
+  // Isolated nodes (no incoming AND no outgoing edges) → level -1 (above roots)
+  for (const [n, d] of Object.entries(indegree)) {
+    if (d === 0 && (!adj[n] || adj[n].length === 0)) {
+      levels[n] = -1;
+    }
+  }
   for (const p of visiblePaths) {
-    if (!(p in levels)) levels[p] = 0;
+    if (!(p in levels)) {
+      // Default for unreachable: isolated if no edges, else root
+      const hasOut = adj[p] && adj[p].length > 0;
+      levels[p] = hasOut ? 0 : -1;
+    }
   }
   return levels;
 }
@@ -419,20 +429,16 @@ function renderMemoryRefTree(container){
   const visiblePaths=new Set(S.files.filter(f=>isVisibleInGraph(f.path)).map(f=>f.path));
   if(!visiblePaths.size)return;
   
-  // Build reference tree ONLY to get node depths (same tree as sidebar)
-  const refTree=buildRefTree(S.graphData);
-  const depthMap={};
-  (function setDepth(treeNodes,d){
-    for(const tn of treeNodes){
-      depthMap[tn.path]=d;
-      if(tn.children.length)setDepth(tn.children,d+1);
-    }
-  })(refTree,0);
+  // Compute DAG levels (longest reference path, isolated=-1)
+  const dagLevels=computeRefLevels(S.graphData,visiblePaths);
+  // Shift levels so min=0 (vis-network handles non-negative better)
+  const minLevel=Math.min(0,...Object.values(dagLevels));
+  const shift=-minLevel;
   
   // Create nodes with tree depth as hierarchical level
   for(const f of S.files){
     if(!visiblePaths.has(f.path))continue;
-    const d=f.path in depthMap?depthMap[f.path]:0;
+    const d=(dagLevels[f.path]??0)+shift;
     nodes.push({
       id:f.path,label:baseName(f.path),group:f.type,
       color:{background:getNodeColor(f.type,f.path),border:'#1c1f2e',highlight:{background:getNodeColor(f.type,f.path),border:'#fff'}},
