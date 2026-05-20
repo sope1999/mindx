@@ -94,7 +94,7 @@
           <label class="toggle-label"><input type="checkbox" class="filter-base" id="chk-ref-base" checked> 基础</label>
           <label class="toggle-label"><input type="checkbox" class="filter-standalone" id="chk-ref-standalone" checked> 独立</label>
           <span class="toolbar-sep"></span>
-          <label class="toggle-label" title="开发模式：忽略保存的坐标，始终自动布局"><input type="checkbox" id="chk-ref-dev" checked> 🔧 开发</label>
+          <button id="btn-ref-refresh" class="btn btn-xs" title="重置为自动布局">🔄 刷新</button>
           <button id="btn-ref-save" class="btn btn-xs" title="保存布局">💾 保存</button>
         </div>
         <div class="graph-wrapper" id="ref-tree-wrapper">
@@ -110,6 +110,7 @@
           <label class="toggle-label"><input type="checkbox" class="filter-base" id="chk-dir-base" checked> 基础</label>
           <label class="toggle-label"><input type="checkbox" class="filter-standalone" id="chk-dir-standalone" checked> 独立</label>
           <span class="toolbar-sep"></span>
+          <button id="btn-dir-refresh" class="btn btn-xs" title="重置为自动布局">🔄 刷新</button>
           <button id="btn-dir-save" class="btn btn-xs" title="保存布局">💾 保存</button>
         </div>
         <div class="graph-wrapper" id="dir-tree-wrapper">
@@ -125,6 +126,7 @@
           <label class="toggle-label"><input type="checkbox" class="filter-base" id="chk-dep-base" checked> 基础</label>
           <label class="toggle-label"><input type="checkbox" class="filter-standalone" id="chk-dep-standalone" checked> 独立</label>
           <span class="toolbar-sep"></span>
+          <button id="btn-dep-refresh" class="btn btn-xs" title="重置为自动布局">🔄 刷新</button>
           <button id="btn-dep-save" class="btn btn-xs" title="保存当前依赖图布局">💾 保存</button>
         </div>
         <div class="graph-wrapper" id="dep-graph-wrapper">
