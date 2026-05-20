@@ -69,6 +69,11 @@ function isFileVisible(path) {
   if (cls === 'base' && !S.showBase) return false;
   if (cls === 'standalone' && !S.showStandalone) return false;
   if (cls === 'external' && !S.showExternal) return false;
+  // In ref mode, external files must have reference relationships
+  if (cls === 'external' && S.treeMode === 'ref' && S.graphData) {
+    const hasEdges = (S.graphData.edges || []).some(e => e.from === path || e.to === path);
+    if (!hasEdges) return false;
+  }
   return true;
 }
 function isVisibleInGraph(path) {
