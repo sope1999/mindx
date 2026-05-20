@@ -7,90 +7,78 @@ projects:
   - C:/Users/xiaohei/Desktop/python/1
   positions:
     dep_positions:
-      AGENTS.md:
-        x: -342
-        y: -283
-      HEARTBEAT.md:
-        x: -212
-        y: -328
-      IDENTITY.md:
-        x: -75
-        y: -393
       MEMORY.md:
-        x: 42
-        y: 35
-      SOUL.md:
-        x: 104
-        y: -398
+        x: 77
+        y: 49
       TOOLS.md:
-        x: 205
-        y: -131
+        x: -148
+        y: 112
       urls.md:
-        x: 220
-        y: 184
-      USER.md:
-        x: 277
-        y: -331
-      任务工作规则.md:
-        x: 268
-        y: 113
-      项目开发工作规则.md:
-        x: 46
-        y: 264
-      memory/archive/historymemory_index.md:
-        x: -120
-        y: -132
-      memory/projects/projects_index.md:
-        x: -43
-        y: 247
-      memory/tools/claude-code.md:
-        x: -189
-        y: 45
-      memory/tools/cron.md:
-        x: -172
-        y: -55
-      memory/tools/napcat.md:
-        x: -43
-        y: -180
-      memory/tools/opencode.md:
-        x: 252
-        y: -66
-      memory/tools/ragflow.md:
-        x: 271
-        y: 23
-      memory/tools/search.md:
         x: -152
-        y: 159
+        y: 23
+      任务工作规则.md:
+        x: 267
+        y: -87
+      项目开发工作规则.md:
+        x: -20
+        y: -149
+      memory/archive/historymemory_index.md:
+        x: 191
+        y: 249
+      memory/projects/projects_index.md:
+        x: 63
+        y: -198
+      memory/tools/claude-code.md:
+        x: -128
+        y: -65
+      memory/tools/cron.md:
+        x: 304
+        y: 5
+      memory/tools/napcat.md:
+        x: -109
+        y: 188
+      memory/tools/opencode.md:
+        x: -54
+        y: 253
+      memory/tools/ragflow.md:
+        x: 301
+        y: 102
+      memory/tools/search.md:
+        x: 179
+        y: -155
       memory/tools/system.md:
-        x: 148
-        y: 238
+        x: 260
+        y: 188
       memory/tools/vcp.md:
-        x: 133
-        y: -177
+        x: 108
+        y: 279
       memory/tools/warning.md:
-        x: 47
-        y: -196
+        x: 25
+        y: 276
       memory/tools/full/claude-code-full.md:
-        x: -367
-        y: -99
+        x: -330
+        y: 51
       memory/tools/full/opencode-full.md:
-        x: 460
-        y: 0
+        x: -277
+        y: 283
       memory/projects/aviation/dev-sessions-old.md:
-        x: -308
-        y: 70
+        x: -371
+        y: -287
       memory/projects/aviation/dev-sessions.md:
-        x: -454
-        y: 220
+        x: -277
+        y: -102
       memory/projects/aviation/overview.md:
-        x: -253
-        y: 296
+        x: -154
+        y: -308
       memory/projects/aviation/PROJECT_PROGRESS.md:
-        x: -64
-        y: 416
+        x: 55
+        y: -390
       memory/projects/transforman/overview.md:
-        x: 140
-        y: 389
+        x: 280
+        y: -265
+      claude/ubuclaude/claude会话清单.md:
+        x: -99
+        y: -240
     dirtree_positions:
       __ROOT__:
         x: 0
@@ -201,23 +189,8 @@ projects:
         x: -750
         y: 60
     reftree_positions:
-      AGENTS.md:
-        x: -300
-        y: -360
-      HEARTBEAT.md:
-        x: -180
-        y: -360
-      IDENTITY.md:
-        x: -60
-        y: -360
       MEMORY.md:
-        x: 60
-        y: -360
-      SOUL.md:
-        x: 180
-        y: -360
-      USER.md:
-        x: 300
+        x: 0
         y: -360
       任务工作规则.md:
         x: -840
@@ -282,8 +255,11 @@ projects:
       memory/projects/aviation/PROJECT_PROGRESS.md:
         x: 60
         y: 180
+      claude/ubuclaude/claude会话清单.md:
+        x: -60
+        y: 360
       memory/projects/aviation/dev-sessions-old.md:
-        x: 0
+        x: 60
         y: 360
   file_classes:
     memory/2026-04-05-tools-agents-refactor.md: hidden
@@ -339,7 +315,7 @@ projects:
     memory/2026-04-05-persistent-subagent-test.md: hidden
     memory/2026-04-05-ragflow-deployment-security.md: hidden
     memory/2026-04-05-subagent-config-violation.md: hidden
-    claude/ubuclaude/claude会话清单.md: standalone
+    claude/ubuclaude/claude会话清单.md: core
     claude/ubuclaude/claude项目清单.md: standalone
   excluded_dirs:
   - C:/SOFT/AI/coder/temp/
