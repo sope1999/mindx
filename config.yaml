@@ -240,56 +240,8 @@ projects:
         x: -750
         y: 60
     reftree_positions:
-      项目开发工作规则 - 人工 - 副本.md:
-        x: -960
-        y: -360
-      项目开发管理方案.md:
-        x: -840
-        y: -360
-      AGENTS.md:
-        x: -720
-        y: -360
-      claude/winclaude/claude-code-projects.md:
-        x: -600
-        y: -360
-      claude/winclaude/claude-code-sessions.md:
-        x: -480
-        y: -360
-      claude/ubuclaude/CLAUDE.md:
-        x: -360
-        y: -360
-      claude/winclaude/CLAUDE.md:
-        x: -240
-        y: -360
-      HEARTBEAT.md:
-        x: -120
-        y: -360
-      IDENTITY.md:
-        x: -244
-        y: -398
       MEMORY.md:
         x: 0
-        y: -360
-      claude/opencode/opencode-projects.md:
-        x: 240
-        y: -360
-      claude/opencode/opencode-sessions.md:
-        x: 360
-        y: -360
-      SOUL.md:
-        x: 480
-        y: -360
-      TOOLS - 副本.md:
-        x: 600
-        y: -360
-      memory/tools/urls.md:
-        x: 720
-        y: -360
-      USER.md:
-        x: 840
-        y: -360
-      claude/ubuclaude/headless/weekly-refresh-prompt.md:
-        x: 960
         y: -360
       任务工作规则.md:
         x: -840
@@ -338,9 +290,6 @@ projects:
         y: -180
       memory/tools/full/claude-code-full.md:
         x: -180
-        y: 0
-      claude/ubuclaude/claude项目清单.md:
-        x: -120
         y: 0
       memory/tools/full/opencode-full.md:
         x: -60

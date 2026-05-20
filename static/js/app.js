@@ -684,7 +684,7 @@ function onFilterChange(e){
   document.querySelectorAll('.filter-standalone,[id*="-standalone"]').forEach(cb=>cb.checked=S.showStandalone);
   document.querySelectorAll('.filter-external').forEach(cb=>cb.checked=S.showExternal);
   document.querySelectorAll('.filter-hidden').forEach(cb=>cb.checked=S.showHidden);
-  lsSet('filter_state',{showCore:S.showCore,showBase:S.showBase,showStandalone:S.showStandalone,showExternal:S.showExternal,showHidden:S.showHidden});
+  localStorage.setItem('mindx_filter_state',JSON.stringify({showCore:S.showCore,showBase:S.showBase,showStandalone:S.showStandalone,showExternal:S.showExternal,showHidden:S.showHidden}));
   renderAll();
 }
 
@@ -745,8 +745,8 @@ document.getElementById('detail-classify').addEventListener('click',e=>{const bt
 document.getElementById('btn-classify-default').addEventListener('click',()=>{const path=S.selectedFile;if(!path)return;setClassification(path,null);renderAll();fetchFileDetail(path).then(d=>renderDetail(d));});
 function updateClock(){const t=new Date();document.getElementById('footer-time').textContent=t.toLocaleTimeString('zh-CN');}
 setInterval(updateClock,1000);updateClock();
-// Restore saved filter states from localStorage
-const savedFilters=lsGet('filter_state');
+// Restore saved filter states from localStorage (global, not project-scoped)
+try{const savedFilters=JSON.parse(localStorage.getItem('mindx_filter_state')||'null');
 if(savedFilters){
   if('showCore' in savedFilters) S.showCore=savedFilters.showCore;
   if('showBase' in savedFilters) S.showBase=savedFilters.showBase;
