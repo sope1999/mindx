@@ -592,11 +592,15 @@ AI 工具 ←─stdio─→ mcp_server.py ←─HTTP─→ server.py:5020
 
 ### Bug 表
 
-### Bug 表
-
 | # | 版本 | 现象 | 根因 | 修复 |
 |---|------|------|------|------|
 | 12 | v4.5 | 重命名文件后不在文件列表中，重新扫描也不出现 | `cef117c` 手动拼图逻辑与 watchdog `update_file()` 竞态，缺 `else` 分支导致旧文件不在图中时新文件永不注册 | 改回 `update_file()` 统一入口（`66c6c77`） |
 | 13 | v4.5 | "重新扫描"按钮只刷新页面，不扫描磁盘 | `btn-rescan` 绑定 `location.reload()`，从未调用 `/api/scan` | 改为异步调 `/api/scan` + `_load_externals()` + loading（`0895ac7`） |
+| 14 | v4.5 | `_build_edges` 边目标路径不一致，孤立节点 | `parse_file` 返回规范化路径可能与 link target 不一致 | 统一使用 parse 返回的路径（`e86ff21`） |
+| 15 | v4.5 | `history.json` 进程崩溃时损坏 | 直接写文件，无原子保护 | 改为 tmp 文件 + `os.replace` 原子写入（`e86ff21`） |
+| 16 | v4.5 | history 损坏后静默丢失 | JSON 解析异常被吞 | 加 try/except + print 警告（`e86ff21`） |
+| 17 | v4.5 | SocketIO 重连时 `initAll()` 并发竞争 | 连接事件未防重入 | 加 `_initAllRunning` 守卫（`e86ff21`） |
+| 18 | v4.5 | 拖拽选框监听器常驻 | `mousemove`/`mouseup` 永不移除 | 切换选择模式时清理监听器（`e86ff21`） |
+| 19 | v4.5 | MCP `get_file_content` 无文件大小限制 | 大文件可导致进程内存爆炸 | 加 10 MB 上限检查（`e86ff21`） |
 
 （v4.5 完）
