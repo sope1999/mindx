@@ -1,4 +1,4 @@
-# mindx 开发文档（v4.4–4.5）
+# mindx 开发文档（v4.5）
 
 > ⚠️ **AI 开发规则（不可跳过）：**
 >
@@ -105,6 +105,13 @@ C:\SOFT\AI\mindx\
 - 修复：vis-network 4.21 会给未知 group 自动套浅色默认样式并覆盖 per-node `color.background`；移除三张图节点数据中的 `group` 字段，并 bump 到 `app.js?v=4.5.0`。
 - 新增：图中点击文件节点后文件树自动高亮对应项（`highlightInTree` + `.selected` class + scrollIntoView）
 
+### v4.5（2026-05-22）— MCP 服务器
+- 新增 MCP 服务器 `mcp_server.py`：通过 stdio 协议为 AI 编程助手（Cursor/Claude Desktop）暴露 mindx 知识图谱查询能力
+- 13 个 MCP 工具：项目管理（list_projects/switch_project）、文件浏览（list_files/search_files/get_file_content/get_file_info）、引用关系（get_references/get_backlinks/get_dependency_graph）、诊断维护（get_broken_links/get_sync_suggestions/get_change_log）、文件操作（rename_file — 原子重命名+自动更新引用）
+- `server.py` 补充 2 个 API 路由：`/api/file/<path>/backlinks`（入链查询）和 `/api/broken-links`（全项目断链汇总）
+- MCP 服务器纯 HTTP 代理模式，不重复 mindx 内部逻辑，通过 config.yaml 共享项目配置
+- 依赖：`mcp`（Python MCP SDK）、`requests`（`requirements-mcp.txt`）
+
 ### v4.3（2026-05-17）
 - 设置持久化迁移至 config.yaml（分类覆写、排除目录、显示模式）
 - 布局坐标服务器备份（/api/positions）
@@ -179,4 +186,4 @@ python server.py
 # 通过界面 "＋ 添加项目" 添加要追踪的文件夹
 ```
 
-> 最后更新：2026-05-19 | 当前版本：v4.4–4.5
+> 最后更新：2026-05-22 | 当前版本：v4.5
