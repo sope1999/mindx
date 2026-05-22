@@ -130,6 +130,8 @@ class FileWatcher:
     def start(self):
         """Start watching."""
         if not self._running:
+            if self.observer is not None and not self.observer.is_alive():
+                self._setup_observer()
             self.observer.start()
             self._running = True
 

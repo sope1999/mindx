@@ -7,6 +7,9 @@ import re
 import time
 import threading
 from pathlib import Path
+
+_project_lock = threading.Lock()
+_server_writing = False
 from datetime import datetime
 
 from flask import Flask, render_template, request, jsonify
@@ -57,6 +60,9 @@ def _init_project(name: str, root: Path) -> GraphEngine:
 def _make_on_change(project_name: str):
     """Return a callback that emits socketio events for a specific project."""
     def on_file_change(rel_path: str, event: str):
+        global _server_writing
+        if _server_writing:
+            return
         engine = engines.get(project_name)
         if engine is None:
             return
@@ -162,23 +168,24 @@ def api_project_select():
     if not root.exists():
         return jsonify({"success": False, "error": f"Project root does not exist: {root}"}), 400
 
-    # Stop current watcher
-    if active_project and active_project in watchers:
-        watchers[active_project].stop()
+    # Stop current watcher + switch project atomically
+    with _project_lock:
+        if active_project and active_project in watchers:
+            watchers[active_project].stop()
 
-    # If project already seen, restart its watcher; otherwise init fresh
-    if name in watchers:
-        engine = _init_project(name, root)
-        watchers[name].restart(root, _make_on_change(name))
-    else:
-        engine = _init_project(name, root)
-        engine.scan_all()
-        _load_externals(name, engine)
-        w = FileWatcher(root, on_change=_make_on_change(name))
-        w.start()
-        watchers[name] = w
+        # If project already seen, restart its watcher; otherwise init fresh
+        if name in watchers:
+            engine = _init_project(name, root)
+            watchers[name].restart(root, _make_on_change(name))
+        else:
+            engine = _init_project(name, root)
+            engine.scan_all()
+            _load_externals(name, engine)
+            w = FileWatcher(root, on_change=_make_on_change(name))
+            w.start()
+            watchers[name] = w
 
-    active_project = name
+        active_project = name
     stats = engines[name].get_stats()
     graph_data = engines[name].get_graph_data()
 
@@ -710,60 +717,65 @@ def api_rename_execute():
     if not engine:
         return jsonify({"success": False, "error": "No engine"}), 500
 
-    updated = []
-    old_basename = Path(old_path).name
-    new_basename = Path(new_path).name
-
-    # 1. Update all referencing files (replace old link text with new in markdown)
-    if old_path in engine.graph:
-        for src, _, edata in list(engine.graph.in_edges(old_path, data=True)):
-            abs_src = project_root / src
-            if src in engine.files and abs_src.exists():
-                try:
-                    content = abs_src.read_text(encoding="utf-8")
-                    info = engine.files[src]
-                    modified = False
-                    for link in info.links:
-                        if link.target == old_path:
-                            old_text = '](' + link.raw_target + ')'
-                            # Preserve directory portion, only replace filename
-                            new_raw = link.raw_target.replace(old_basename, new_basename)
-                            new_text = '](' + new_raw + ')'
-                            newcontent = content.replace(old_text, new_text)
-                            if newcontent != content:
-                                content = newcontent
-                                modified = True
-                    if modified:
-                        abs_src.write_text(content, encoding="utf-8")
-                        updated.append(src)
-                except Exception:
-                    pass
-
-    # 2. Update the file itself (self-references)
-    if old_path in engine.files and old_abs.exists():
-        try:
-            content = old_abs.read_text(encoding="utf-8")
-            info = engine.files[old_path]
-            modified = False
-            for link in info.links:
-                if link.target == old_path:
-                    old_text = '](' + link.raw_target + ')'
-                    new_raw = link.raw_target.replace(old_basename, new_basename)
-                    new_text = '](' + new_raw + ')'
-                    newcontent = content.replace(old_text, new_text)
-                    if newcontent != content:
-                        content = newcontent
-                        modified = True
-            if modified:
-                old_abs.write_text(content, encoding="utf-8")
-        except Exception:
-            pass
-
-    # 3. Rename file on disk
+    global _server_writing
+    _server_writing = True
     try:
-        old_abs.rename(new_abs)
-    except Exception as e:
-        return jsonify({"success": False, "error": f"Rename failed: {e}"}), 500
+        updated = []
+        old_basename = Path(old_path).name
+        new_basename = Path(new_path).name
+
+        # 1. Update all referencing files (replace old link text with new in markdown)
+        if old_path in engine.graph:
+            for src, _, edata in list(engine.graph.in_edges(old_path, data=True)):
+                abs_src = project_root / src
+                if src in engine.files and abs_src.exists():
+                    try:
+                        content = abs_src.read_text(encoding="utf-8")
+                        info = engine.files[src]
+                        modified = False
+                        for link in info.links:
+                            if link.target == old_path:
+                                old_text = '](' + link.raw_target + ')'
+                                # Preserve directory portion, only replace filename
+                                new_raw = link.raw_target.replace(old_basename, new_basename)
+                                new_text = '](' + new_raw + ')'
+                                newcontent = content.replace(old_text, new_text)
+                                if newcontent != content:
+                                    content = newcontent
+                                    modified = True
+                        if modified:
+                            abs_src.write_text(content, encoding="utf-8")
+                            updated.append(src)
+                    except Exception:
+                        pass
+
+        # 2. Update the file itself (self-references)
+        if old_path in engine.files and old_abs.exists():
+            try:
+                content = old_abs.read_text(encoding="utf-8")
+                info = engine.files[old_path]
+                modified = False
+                for link in info.links:
+                    if link.target == old_path:
+                        old_text = '](' + link.raw_target + ')'
+                        new_raw = link.raw_target.replace(old_basename, new_basename)
+                        new_text = '](' + new_raw + ')'
+                        newcontent = content.replace(old_text, new_text)
+                        if newcontent != content:
+                            content = newcontent
+                            modified = True
+                if modified:
+                    old_abs.write_text(content, encoding="utf-8")
+            except Exception:
+                pass
+
+        # 3. Rename file on disk
+        try:
+            old_abs.rename(new_abs)
+        except Exception as e:
+            return jsonify({"success": False, "error": f"Rename failed: {e}"}), 500
+    finally:
+        _server_writing = False
 
     # 4. Update graph state via canonical engine methods
     # Remove old node from graph and files
@@ -799,16 +811,18 @@ def init_engine():
     root = Path(first["root"])
     print(f"[mindx] Scanning {root} ...")
 
-    engine = _init_project(name, root)
-    engine.scan_all()
-    _load_externals(name, engine)
+    with _project_lock:
+        engine = _init_project(name, root)
+        engine.scan_all()
+        _load_externals(name, engine)
     stats = engine.get_stats()
     print(f"[mindx] Found {stats['total_files']} files, {stats['total_edges']} edges")
 
-    w = FileWatcher(root, on_change=_make_on_change(name))
-    w.start()
-    watchers[name] = w
-    active_project = name
+    with _project_lock:
+        w = FileWatcher(root, on_change=_make_on_change(name))
+        w.start()
+        watchers[name] = w
+        active_project = name
 
 
 def _load_externals(project_name: str, engine: GraphEngine):

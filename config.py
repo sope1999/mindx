@@ -52,7 +52,7 @@ FILE_TYPES = {
 # ── Files to ignore ─────────────────────────────────────────
 IGNORE_PATTERNS = [
     ".git", ".claude", ".learnings", ".openclaw",
-    "__pycache__", "*.pyc", "temp/*", "temp_docs/*",
+    "*.pyc", "temp/*", "temp_docs/*",
     "docs/*", "warning/*",
 ]
 
@@ -179,8 +179,10 @@ def _save_yaml(target: Path, config: dict) -> None:
     # Avoid writing project defaults into the file
     out = copy.deepcopy(config)
     target.parent.mkdir(parents=True, exist_ok=True)
-    with open(target, "w", encoding="utf-8") as fh:
+    tmp = str(target) + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
         yaml.dump(out, fh, default_flow_style=False, allow_unicode=True, sort_keys=False)
+    os.replace(tmp, str(target))
 
 
 def get_project_config(config: dict, name: str) -> Optional[dict]:

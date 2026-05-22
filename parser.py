@@ -48,7 +48,13 @@ def resolve_link_target(source_path: str, raw_target: str, project_root: Path) -
     project_root the target is marked external but the resolved absolute path is
     still returned as a string.
     """
+    # Bug 27: UNC paths are always external
+    if raw_target.startswith("//") or raw_target.startswith("\\\\"):
+        return (raw_target, True)
+
     # Remove anchor fragments (#section)
+    # Bug 24: Strip optional title ("title") before anchor removal
+    raw_target = re.sub(r'\s+"[^"]*"$', '', raw_target)
     raw_target = re.sub(r"#[^)]*$", "", raw_target)
     if not raw_target:
         return source_path, False
@@ -206,8 +212,15 @@ def parse_file(abs_path: Path, project_root: Path, file_types: Optional[dict] = 
     )
 
     if exists and abs_path.suffix == ".md":
+        # Bug 22: Guard against OOM on very large files
+        if stat and stat.st_size > 50 * 1024 * 1024:
+            info.links = []
+            return info
         try:
             content = abs_path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            info.links = []
+            return info
         except Exception:
             content = ""
         info.links = extract_md_links(content, rel_path, project_root)
