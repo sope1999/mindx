@@ -764,32 +764,16 @@ def api_rename_execute():
     except Exception as e:
         return jsonify({"success": False, "error": f"Rename failed: {e}"}), 500
 
-    # 4. Update graph: remove old node, add new one, rewire edges
+    # 4. Update graph state via canonical engine methods
+    # Remove old node from graph and files
     if old_path in engine.graph:
-        in_edges = [(src, edata) for src, _, edata in engine.graph.in_edges(old_path, data=True)]
-        out_edges = [(tgt, edata) for _, tgt, edata in engine.graph.out_edges(old_path, data=True)]
         engine.graph.remove_node(old_path)
-        engine.files.pop(old_path, None)
-        # Re-add with new path
-        info = parse_file(new_abs, project_root)
-        engine.files[new_path] = info
-        engine.graph.add_node(new_path, **{
-            "type": info.file_type, "exists": True,
-            "label": Path(new_path).name,
-        })
-        for tgt, edata in out_edges:
-            if tgt != old_path:
-                if tgt not in engine.graph:
-                    tinfo = parse_file(project_root / tgt, project_root)
-                    engine.files[tgt] = tinfo
-                    engine.graph.add_node(tgt, **{"type": tinfo.file_type, "exists": tinfo.exists, "label": Path(tgt).name})
-                engine.graph.add_edge(new_path, tgt, **edata)
-        for src, edata in in_edges:
-            if src != old_path:
-                engine.graph.add_edge(src, new_path, **edata)
-    else:
-        # Old file not in graph — register new file via standard path
-        engine.update_file(new_path, "created")
+    engine.files.pop(old_path, None)
+    # Re-scan referencing files (content already updated on disk in step 1)
+    for f in updated:
+        engine.update_file(f, "modified")
+    # Register the newly renamed file
+    engine.update_file(new_path, "created")
 
     return jsonify({
         "success": True,
