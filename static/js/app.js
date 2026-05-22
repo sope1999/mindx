@@ -11,6 +11,7 @@ const S = {
   selectMode: false,
   selectedFiles: new Set(),
   reachableSet: new Set(),
+  historyMode: { changes: false, sync: false },
 };
 
 const BASE_DEFAULT = new Set(['AGENTS.md','SOUL.md','USER.md','IDENTITY.md','HEARTBEAT.md']);
@@ -681,33 +682,47 @@ async function initAll(){
   await loadSettings();
   try{const st=await api('/api/status');updateStats(st);document.getElementById('footer-path').textContent=st.project_root||'—';document.getElementById('footer-watching').textContent=st.watching?'👁 监听中':'⏸ 暂停';document.getElementById('no-project-state').style.display='none';document.getElementById('app').style.display='flex';}catch(e){}
   await fetchFiles();await fetchGraph();await loadPositionsFallback();renderAll();
-  loadHistory();
 }
 async function fetchFiles(){S.files=await api('/api/files');computeStaleMap();applyAfterData();}
 async function fetchGraph(){S._dagReachable=null;S.graphData=await api('/api/graph');computeStaleMap();applyAfterData();}
-async function loadHistory(filter) {
-  filter = filter || 'all';
-  const list = document.getElementById('history-list');
-  if (!list) return;
-  list.innerHTML = '<p class="text-dim">加载中…</p>';
+async function toggleHistoryPanel(panelType) {
+  const feedId = panelType === 'sync' ? 'suggestion-feed' : 'change-feed';
+  const container = document.getElementById(feedId);
+  const button = document.querySelector(`.history-toggle[data-panel="${panelType}"]`);
+  if (!container || !button) return;
+
+  S.historyMode[panelType] = !S.historyMode[panelType];
+  if (!S.historyMode[panelType]) {
+    button.classList.remove('active');
+    if (container._liveNodes) {
+      container.replaceChildren(...container._liveNodes);
+      container._liveNodes = null;
+    } else {
+      container.innerHTML = container.dataset.liveContent || '';
+    }
+    delete container.dataset.liveContent;
+    return;
+  }
+
+  container.dataset.liveContent = container.innerHTML;
+  container._liveNodes = Array.from(container.childNodes);
+  button.classList.add('active');
+  container.innerHTML = '<p class="text-dim">加载中…</p>';
   try {
-    const r = await fetch(`/api/history?days=3&type=${filter}`);
+    const r = await fetch(`/api/history?days=3&type=${panelType}`);
     const d = await r.json();
-    renderHistory(d.history || [], filter);
+    renderHistoryFeed(d.history || [], container);
   } catch(e) {
-    list.innerHTML = '<p class="text-dim">加载失败</p>';
+    container.innerHTML = '<p class="text-dim">加载失败</p>';
   }
 }
-function renderHistory(entries, activeFilter) {
-  const list = document.getElementById('history-list');
-  if (!list) return;
-  list.innerHTML = '';
-  document.querySelectorAll('.history-filter').forEach(btn=>btn.classList.toggle('active',btn.dataset.filter===(activeFilter||'all')));
+function renderHistoryFeed(entries, container) {
+  container.innerHTML = '';
   if (!entries.length) {
     const empty = document.createElement('p');
     empty.className = 'text-dim';
     empty.textContent = '暂无记录';
-    list.appendChild(empty);
+    container.appendChild(empty);
     return;
   }
   const pad = n => String(n).padStart(2,'0');
@@ -717,44 +732,19 @@ function renderHistory(entries, activeFilter) {
     const t = pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
     return d.toDateString()===new Date().toDateString()?t:d.toLocaleDateString('zh-CN')+' '+t;
   };
-  const fileLink = path => {
-    const p = (path || '').replace(/\\/g,'/');
-    const el = document.createElement('span');
-    el.className = 'history-file';
-    el.textContent = p || '未知文件';
-    if (p) el.addEventListener('click',()=>{selectFile(p);highlightInTree(p);});
-    return el;
-  };
   entries.forEach(entry=>{
-    const isSync = entry.type === 'sync';
     const item = document.createElement('div');
-    item.className = 'history-entry '+(isSync?'history-sync':'history-change');
-    const icon = document.createElement('div');
-    icon.className = 'history-icon';
-    icon.textContent = isSync ? '🔗' : '🔄';
-    const body = document.createElement('div');
-    body.className = 'history-body';
-    const time = document.createElement('div');
-    time.className = 'history-time';
+    item.className = 'feed-item';
+    const time = document.createElement('span');
+    time.className = 'feed-time';
     time.textContent = fmtTime(entry.timestamp);
-    const main = document.createElement('div');
-    main.appendChild(fileLink(entry.file));
-    main.appendChild(document.createTextNode(' — '+(entry.event || entry.type || '事件')));
-    body.appendChild(time);
-    body.appendChild(main);
-    if (isSync && (entry.target || entry.reason)) {
-      const meta = document.createElement('div');
-      meta.className = 'history-meta';
-      if (entry.target) {
-        meta.appendChild(document.createTextNode('目标：'));
-        meta.appendChild(fileLink(entry.target));
-      }
-      if (entry.reason) meta.appendChild(document.createTextNode((entry.target?' · ':'')+'原因：'+entry.reason));
-      body.appendChild(meta);
-    }
-    item.appendChild(icon);
-    item.appendChild(body);
-    list.appendChild(item);
+    const file = (entry.file || '').replace(/\\/g,'/');
+    const detail = entry.type === 'sync'
+      ? [entry.event || 'sync', entry.target ? '→ '+entry.target : '', entry.reason || ''].filter(Boolean).join(' · ')
+      : (entry.event || entry.type || '事件');
+    item.appendChild(time);
+    item.appendChild(document.createTextNode(' 📋 '+(file || '未知文件')+' — '+detail));
+    container.appendChild(item);
   });
 }
 function applyAfterData(){const s=getSettings();if(s.displayMode==='ref'&&s.activeRoot)computeReachable(s.activeRoot);renderAll();}
@@ -798,7 +788,7 @@ document.querySelectorAll('.filter-standalone').forEach(cb=>cb.addEventListener(
 document.querySelectorAll('.filter-external').forEach(cb=>cb.addEventListener('change',e=>onFilterChange(e)));
 document.querySelectorAll('.filter-hidden').forEach(cb=>cb.addEventListener('change',e=>onFilterChange(e)));
 ['chk-ref-base','chk-ref-standalone','chk-dir-base','chk-dir-standalone','chk-dep-base','chk-dep-standalone'].forEach(id=>{const cb=document.getElementById(id);if(cb)cb.addEventListener('change',e=>onFilterChange(e));});
-document.querySelectorAll('.history-filter').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.history-filter').forEach(b=>b.classList.remove('active'));btn.classList.add('active');loadHistory(btn.dataset.filter);}));
+document.querySelectorAll('.history-toggle').forEach(btn=>btn.addEventListener('click',()=>toggleHistoryPanel(btn.dataset.panel)));
 // Refresh buttons: clear saved positions and re-render with computed layout
 document.getElementById('btn-ref-refresh')?.addEventListener('click',()=>{lsSet('reftree_positions',null);renderRefTreeGraph();});
 document.getElementById('btn-dir-refresh')?.addEventListener('click',()=>{lsSet('dirtree_positions',null);renderDirTreeGraph();});

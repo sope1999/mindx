@@ -223,6 +223,7 @@
 
       <div class="panel-header">
         <h3>📡 实时事件</h3>
+        <button class="btn btn-xs history-toggle" data-panel="changes" title="切换历史记录">📋</button>
       </div>
       <div class="panel-body panel-events">
         <div id="change-feed" class="feed"></div>
@@ -230,23 +231,10 @@
 
       <div class="panel-header">
         <h3>💡 同步建议</h3>
+        <button class="btn btn-xs history-toggle" data-panel="sync" title="切换历史记录">📋</button>
       </div>
       <div class="panel-body panel-suggestions">
         <div id="suggestion-feed" class="feed"></div>
-      </div>
-
-      <div class="panel-divider"></div>
-
-      <div class="panel-header">
-        <h3>📋 历史</h3>
-        <div class="header-actions">
-          <button class="btn btn-xs history-filter active" data-filter="all">全部</button>
-          <button class="btn btn-xs history-filter" data-filter="changes">变更</button>
-          <button class="btn btn-xs history-filter" data-filter="sync">同步</button>
-        </div>
-      </div>
-      <div class="panel-body panel-history" id="history-list">
-        <p class="dim">加载中…</p>
       </div>
     </aside>
 
