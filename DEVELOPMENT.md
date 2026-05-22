@@ -602,5 +602,14 @@ AI 工具 ←─stdio─→ mcp_server.py ←─HTTP─→ server.py:5020
 | 17 | v4.5 | SocketIO 重连时 `initAll()` 并发竞争 | 连接事件未防重入 | 加 `_initAllRunning` 守卫（`e86ff21`） |
 | 18 | v4.5 | 拖拽选框监听器常驻 | `mousemove`/`mouseup` 永不移除 | 切换选择模式时清理监听器（`e86ff21`） |
 | 19 | v4.5 | MCP `get_file_content` 无文件大小限制 | 大文件可导致进程内存爆炸 | 加 10 MB 上限检查（`e86ff21`） |
+| 21 | v4.5 | 项目切换时竞态条件 | `active_project` 赋值与引擎访问无临界区保护 | 加 `_project_lock` 保护切换逻辑（`bca378a`） |
+| 22 | v4.5 | 超大文件解析 OOM | `read_text()` 全量读入内存 | 加 50 MB 上限检查（`bca378a`） |
+| 23 | v4.5 | 二进制文件编码异常静默 | `except Exception` 吞 UnicodeDecodeError | 细化为 `UnicodeDecodeError` + 通用异常（`bca378a`） |
+| 24 | v4.5 | 链接标题 `[text](url "title")` 误解析 | title 被当作路径一部分 | 提取后剥离 title（`bca378a`） |
+| 25 | v4.5 | 文件观察者 stop 后无法重启 | 线程死后 `start()` 报错 | 重建 observer（`bca378a`） |
+| 26 | v4.5 | config.yaml 崩溃时损坏 | 直接覆盖写，无原子保护 | 改为 tmp + `os.replace`（`bca378a`） |
+| 27 | v4.5 | UNC 路径被误当相对路径 | `resolve_link_target` 未检测 UNC | 加 `//`/`\\\\` 前缀检测（`bca378a`） |
+| 28 | v4.5 | 重复忽略模式 | `__pycache__` 与 `*.pyc` 冗余 | 移除 `__pycache__`（`bca378a`） |
+| 29 | v4.5 | 服务写文件触发 watchdog 反馈环 | 自身文件修改被 watchdog 重复解析 | 加 `_server_writing` 标志跳过（`bca378a`） |
 
 （v4.5 完）
