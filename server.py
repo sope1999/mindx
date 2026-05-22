@@ -310,6 +310,31 @@ def api_file_detail(file_path: str):
     return jsonify(result)
 
 
+# 获取指定文件的所有反向链接（引用该文件的来源）
+@app.route("/api/file/<path:file_path>/backlinks")
+def api_file_backlinks(file_path: str):
+    """Get all backlinks (incoming edges) for a specific file."""
+    if active_project is None:
+        return jsonify({"error": "No active project"}), 400
+
+    engine = engines.get(active_project)
+    if engine is None:
+        return jsonify({"error": "Engine not ready"}), 500
+
+    if file_path not in engine.files:
+        return jsonify({"backlinks": []})
+
+    backlinks = []
+    for source, target, data in engine.graph.in_edges(file_path, data=True):
+        backlinks.append({
+            "from": source,
+            "link_type": data.get("link_type", "md_link") if data else "md_link",
+            "context": data.get("context", "") if data else "",
+        })
+
+    return jsonify({"backlinks": backlinks})
+
+
 @app.route("/api/graph")
 def api_graph():
     """Get full dependency graph data for active project."""
@@ -355,6 +380,38 @@ def api_changes():
         }
         for c in reversed(changes)
     ])
+
+
+# ── 断链检测：扫描整个活跃项目中所有文件的不存在内部链接
+@app.route("/api/broken-links")
+def api_broken_links():
+    """返回活跃项目中所有断开的内部链接。"""
+    if active_project is None:
+        return jsonify({"error": "No active project"}), 400
+
+    proj = get_project_config(_config, active_project)
+    if proj is None:
+        return jsonify({"error": "No active project config"}), 400
+    project_root = Path(proj["root"])
+
+    engine = engines.get(active_project)
+    if engine is None:
+        return jsonify({"error": "Engine not ready"}), 500
+
+    broken_links = []
+    for file_path, info in engine.files.items():
+        for link in info.links:
+            if link.is_external:
+                continue
+            if not (project_root / link.target).exists():
+                broken_links.append({
+                    "file": file_path,
+                    "target": link.target,
+                    "link_type": link.link_type,
+                    "context": link.context,
+                })
+
+    return jsonify({"broken_links": broken_links, "count": len(broken_links)})
 
 
 @app.route("/api/sync-check")
