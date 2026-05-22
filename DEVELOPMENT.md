@@ -607,4 +607,12 @@ AI 工具 ←─stdio─→ mcp_server.py ←─HTTP─→ server.py:5020
 }
 ```
 
+### 事件历史面板
+
+- 持久化事件记录到项目根目录 `.mindx/history.json`（JSON 增量追加）
+- `GraphEngine._load_history()` 启动时加载并自动清理 >3 天记录
+- `update_file()` 在每次变更事件和同步建议时写入 history
+- `GET /api/history?days=3&type=all|changes|sync` 查询 API
+- 前端新增第 5 个标签页 📋 历史：时间线视图，支持按类型筛选，点击文件名跳转到详情
+
 （v4.5 完）

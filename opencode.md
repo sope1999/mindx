@@ -114,6 +114,8 @@ C:\SOFT\AI\mindx\
 - `server.py` 补充 2 个 API 路由：`/api/file/<path>/backlinks`（入链查询）和 `/api/broken-links`（全项目断链汇总）
 - MCP 服务器纯 HTTP 代理模式，不重复 mindx 内部逻辑，通过 config.yaml 共享项目配置
 - 依赖：`mcp`（Python MCP SDK）、`requests`（`requirements-mcp.txt`）
+- 新增：事件历史记录面板（📋 历史），持久化文件变更与同步操作到 `.mindx/history.json`，支持 3 天回溯、按类型筛选（全部/变更/同步）；新增 `GET /api/history?days=3&type=all` 路由
+- 新增 AI 规则 #10：禁止 `bash` 启动长驻进程，改用 `Start-Process -WindowStyle Hidden`
 
 ### v4.3（2026-05-17）
 - 设置持久化迁移至 config.yaml（分类覆写、排除目录、显示模式）
