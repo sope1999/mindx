@@ -20,7 +20,7 @@
 > 9. 改了共享函数/组件后，确认所有调用方行为不受破坏（如三个图共用同一渲染逻辑）
 >
 > **服务管理：**
-> 10. 禁止通过 `bash` 启动或重启 `python server.py`（长驻进程会被超时 kill 且输出干扰 opencode）。如需启动服务，直接告知用户在终端手动执行
+> 10. 禁止用 `bash` 启动/重启 `python server.py`（长驻进程超时被 kill，输出干扰 opencode）。改用 `Start-Process -WindowStyle Hidden` 后台启动
 
 ## 项目概述
 
