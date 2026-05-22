@@ -559,7 +559,7 @@ function renderMemoryRefTree(container){
   if(S.netRefTree)S.netRefTree.destroy();
   S.netRefTree=new vis.Network(container,data,opts);
   S.netRefTree.on('dragEnd',()=>{saveRefTreePositions();});
-  S.netRefTree.on('click',params=>{if(params.nodes.length>0){const id=params.nodes[0];if(id!=='__ROOT__'&&!id.endsWith('/'))selectFile(id);}});
+  S.netRefTree.on('click',params=>{if(params.nodes.length>0){const id=params.nodes[0];if(id!=='__ROOT__'&&!id.endsWith('/'))selectFile(id);highlightInTree(id);}});
 }
 function savePosition(key,net){
   if(!net)return;
@@ -590,7 +590,7 @@ function renderMemoryDirTree(container){
   const data={nodes:new vis.DataSet(nodes),edges:new vis.DataSet(edges)};const opts={physics:{enabled:false},interaction:{dragNodes:false,hover:true,navigationButtons:true,keyboard:true},edges:{smooth:false}};
   if(S.netDirTree)S.netDirTree.destroy();S.netDirTree=new vis.Network(container,data,opts);
   setTimeout(()=>{if(S.netDirTree)S.netDirTree.fit({animation:{duration:300}});},500);
-  S.netDirTree.on('click',params=>{if(params.nodes.length>0){const id=params.nodes[0];if(id!=='__ROOT__'&&!id.endsWith('/'))selectFile(id);}});
+  S.netDirTree.on('click',params=>{if(params.nodes.length>0){const id=params.nodes[0];if(id!=='__ROOT__'&&!id.endsWith('/'))selectFile(id);highlightInTree(id);}});
 }
 
 // ── Dependency graph ──
@@ -620,12 +620,17 @@ function renderDepGraph(){
   if(S.netDepGraph)S.netDepGraph.destroy();S.netDepGraph=new vis.Network(container,{nodes,edges},opts);
   if(savedPos){try{for(const n of nodesArr){if(savedPos[n.id])nodes.update({id:n.id,x:savedPos[n.id].x,y:savedPos[n.id].y});}}catch(e){}}
   let stabilized=false;S.netDepGraph.on('stabilized',()=>{if(!stabilized){stabilized=true;S.netDepGraph.setOptions({physics:false});saveDepPositions();}});
-  S.netDepGraph.on('click',params=>{if(params.nodes.length>0)selectFile(params.nodes[0]);});
+  S.netDepGraph.on('click',params=>{if(params.nodes.length>0){selectFile(params.nodes[0]);highlightInTree(params.nodes[0]);}});
   S.netDepGraph.on('dragEnd',()=>{saveDepPositions();});
 }
   function saveDepPositions(){savePosition('dep_positions',S.netDepGraph);}
 
 // ── File detail ──
+function highlightInTree(path){
+  document.querySelectorAll('#file-tree .tree-item.selected').forEach(el=>el.classList.remove('selected'));
+  const target=document.querySelector('#file-tree .tree-item[data-path="'+CSS.escape(path)+'"]');
+  if(target){target.classList.add('selected');target.scrollIntoView({block:'nearest',behavior:'smooth'});}
+}
 function selectFile(path){S.selectedFile=path;bumpReadCount(path);fetchFileDetail(path).then(d=>renderDetail(d));try{S.netRefTree?.selectNodes([path]);S.netRefTree?.focus(path,{scale:1.2,animation:true});}catch(e){}try{S.netDirTree?.selectNodes([path]);S.netDirTree?.focus(path,{scale:1.2,animation:true});}catch(e){}try{S.netDepGraph?.selectNodes([path]);S.netDepGraph?.focus(path,{scale:1.2,animation:true});}catch(e){}}
 async function fetchFileDetail(path){const r=await fetch('/api/file/'+encodeURIComponent(path));return r.json();}
 function renderDetail(data){
