@@ -382,6 +382,26 @@ def api_changes():
     ])
 
 
+@app.route("/api/history")
+def api_history():
+    """Get persisted event history for active project."""
+    if active_project is None:
+        return jsonify({"error": "No active project"}), 400
+    engine = engines.get(active_project)
+    if engine is None:
+        return jsonify({"error": "Engine not ready"}), 500
+
+    days = request.args.get("days", 3, type=int)
+    if days > 3:
+        days = 3
+    type_filter = request.args.get("type", "all")
+    if type_filter not in ("all", "changes", "sync"):
+        type_filter = "all"
+
+    result = engine.get_history(days=days, type_filter=type_filter)
+    return jsonify(result)
+
+
 # ── 断链检测：扫描整个活跃项目中所有文件的不存在内部链接
 @app.route("/api/broken-links")
 def api_broken_links():

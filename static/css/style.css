@@ -390,6 +390,23 @@ html, body {
 .tab-content { display: none; flex: 1; overflow: hidden; flex-direction: column; }
 .tab-content.active { display: flex; }
 
+/* History timeline */
+.history-list { padding: 12px; overflow-y: auto; max-height: 100%; }
+.history-entry {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 8px 0; border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.history-entry:last-child { border-bottom: none; }
+.history-icon { font-size: 16px; flex-shrink: 0; margin-top: 2px; }
+.history-body { flex: 1; min-width: 0; }
+.history-time { color: var(--text-dim); font-size: 11px; margin-bottom: 2px; }
+.history-file { color: var(--accent); cursor: pointer; font-family: var(--font-mono); font-size: 12px; }
+.history-file:hover { text-decoration: underline; }
+.history-meta { color: var(--text-dim); font-size: 11px; margin-top: 2px; }
+.history-change .history-icon { color: var(--accent); }
+.history-sync .history-icon { color: var(--orange, #d29922); }
+
 /* ── Graph containers ──────────────────────────── */
 .graph-wrapper {
   flex: 1;

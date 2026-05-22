@@ -86,6 +86,7 @@
         <button class="tab" data-tab="dir-tree">📁 目录树图</button>
         <button class="tab" data-tab="dep-graph">🔗 依赖图</button>
         <button class="tab" data-tab="detail">📄 文件详情</button>
+        <button class="tab" data-tab="history">📋 历史</button>
       </div>
 
       <!-- Tab: Reference Tree -->
@@ -185,6 +186,20 @@
             <h4>🔗 原始链接</h4>
             <div id="detail-links" class="ref-list"></div>
           </div>
+        </div>
+      </div>
+
+      <!-- Tab: History -->
+      <div class="tab-content" id="tab-history">
+        <div class="tab-toolbar">
+          <button class="btn btn-xs history-filter active" data-filter="all">全部</button>
+          <button class="btn btn-xs history-filter" data-filter="changes">仅变更</button>
+          <button class="btn btn-xs history-filter" data-filter="sync">仅同步</button>
+          <span class="toolbar-sep"></span>
+          <span id="history-count" class="stat"></span>
+        </div>
+        <div class="panel-body history-list" id="history-list">
+          <p class="text-dim">加载中…</p>
         </div>
       </div>
     </section>

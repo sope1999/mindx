@@ -40,6 +40,62 @@ class GraphEngine:
         self.files: Dict[str, FileInfo] = {}
         self.change_log: List[ChangeEvent] = []
         self._max_changes = 200
+        self._history_dir = self.project_root / ".mindx"
+        self._history_file = self._history_dir / "history.json"
+        self._history: List[dict] = []
+        self._load_history()
+
+    def _load_history(self):
+        """Load history from disk, filtering out entries older than 3 days."""
+        if not self._history_dir.exists():
+            self._history_dir.mkdir(exist_ok=True)
+        if self._history_file.exists():
+            try:
+                import json as _json
+                raw = _json.loads(self._history_file.read_text(encoding="utf-8"))
+                cutoff = datetime.now().timestamp() - 3 * 86400
+                self._history = [
+                    e for e in raw
+                    if self._parse_ts(e.get("timestamp", "")) >= cutoff
+                ]
+            except Exception:
+                self._history = []
+        else:
+            self._history = []
+
+    def _parse_ts(self, ts_str: str) -> float:
+        """Parse an ISO timestamp string to epoch float, returning 0 on failure."""
+        try:
+            return datetime.fromisoformat(ts_str).timestamp()
+        except Exception:
+            return 0.0
+
+    def _save_history_entry(self, entry: dict):
+        """Append a history entry, auto-cleanup old entries, and persist to disk."""
+        import json as _json
+        self._history.append(entry)
+        cutoff = datetime.now().timestamp() - 3 * 86400
+        self._history = [
+            e for e in self._history
+            if self._parse_ts(e.get("timestamp", "")) >= cutoff
+        ]
+        self._history_dir.mkdir(exist_ok=True)
+        with open(self._history_file, "w", encoding="utf-8") as f:
+            _json.dump(self._history, f, ensure_ascii=False, indent=2, default=str)
+
+    def get_history(self, days: int = 3, type_filter: str = "all") -> dict:
+        """Return persisted history entries filtered by days and type."""
+        cutoff = datetime.now().timestamp() - days * 86400
+        filtered = []
+        for e in self._history:
+            if self._parse_ts(e.get("timestamp", "")) < cutoff:
+                continue
+            if type_filter == "changes" and e.get("type") != "change":
+                continue
+            if type_filter == "sync" and e.get("type") != "sync":
+                continue
+            filtered.append(e)
+        return {"history": filtered, "count": len(filtered)}
 
     def scan_all(self):
         """Full scan: parse every .md file under project_root recursively."""
@@ -209,6 +265,23 @@ class GraphEngine:
         ))
         if len(self.change_log) > self._max_changes:
             self.change_log = self.change_log[-self._max_changes:]
+
+        # Persist to history
+        self._save_history_entry({
+            "timestamp": datetime.now().isoformat(),
+            "type": "change",
+            "file": rel_path,
+            "event": event,
+        })
+        for s in suggestions:
+            self._save_history_entry({
+                "timestamp": datetime.now().isoformat(),
+                "type": "sync",
+                "file": s.changed_file,
+                "target": s.target,
+                "reason": s.reason,
+                "severity": s.severity,
+            })
 
         return suggestions
 

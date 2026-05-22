@@ -684,6 +684,80 @@ async function initAll(){
 }
 async function fetchFiles(){S.files=await api('/api/files');computeStaleMap();applyAfterData();}
 async function fetchGraph(){S._dagReachable=null;S.graphData=await api('/api/graph');computeStaleMap();applyAfterData();}
+async function loadHistory(filter) {
+  filter = filter || 'all';
+  const list = document.getElementById('history-list');
+  if (!list) return;
+  list.innerHTML = '<p class="text-dim">加载中…</p>';
+  try {
+    const r = await fetch(`/api/history?days=3&type=${filter}`);
+    const d = await r.json();
+    renderHistory(d.history || [], filter);
+  } catch(e) {
+    list.innerHTML = '<p class="text-dim">加载失败</p>';
+  }
+}
+function renderHistory(entries, activeFilter) {
+  const list = document.getElementById('history-list');
+  const count = document.getElementById('history-count');
+  if (!list) return;
+  list.innerHTML = '';
+  if (count) count.textContent = '共 '+entries.length+' 条';
+  document.querySelectorAll('.history-filter').forEach(btn=>btn.classList.toggle('active',btn.dataset.filter===(activeFilter||'all')));
+  if (!entries.length) {
+    const empty = document.createElement('p');
+    empty.className = 'text-dim';
+    empty.textContent = '暂无记录';
+    list.appendChild(empty);
+    return;
+  }
+  const pad = n => String(n).padStart(2,'0');
+  const fmtTime = ts => {
+    const d = new Date(ts);
+    if (Number.isNaN(d.getTime())) return ts || '';
+    const t = pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
+    return d.toDateString()===new Date().toDateString()?t:d.toLocaleDateString('zh-CN')+' '+t;
+  };
+  const fileLink = path => {
+    const p = (path || '').replace(/\\/g,'/');
+    const el = document.createElement('span');
+    el.className = 'history-file';
+    el.textContent = p || '未知文件';
+    if (p) el.addEventListener('click',()=>{selectFile(p);highlightInTree(p);});
+    return el;
+  };
+  entries.forEach(entry=>{
+    const isSync = entry.type === 'sync';
+    const item = document.createElement('div');
+    item.className = 'history-entry '+(isSync?'history-sync':'history-change');
+    const icon = document.createElement('div');
+    icon.className = 'history-icon';
+    icon.textContent = isSync ? '🔗' : '🔄';
+    const body = document.createElement('div');
+    body.className = 'history-body';
+    const time = document.createElement('div');
+    time.className = 'history-time';
+    time.textContent = fmtTime(entry.timestamp);
+    const main = document.createElement('div');
+    main.appendChild(fileLink(entry.file));
+    main.appendChild(document.createTextNode(' — '+(entry.event || entry.type || '事件')));
+    body.appendChild(time);
+    body.appendChild(main);
+    if (isSync && (entry.target || entry.reason)) {
+      const meta = document.createElement('div');
+      meta.className = 'history-meta';
+      if (entry.target) {
+        meta.appendChild(document.createTextNode('目标：'));
+        meta.appendChild(fileLink(entry.target));
+      }
+      if (entry.reason) meta.appendChild(document.createTextNode((entry.target?' · ':'')+'原因：'+entry.reason));
+      body.appendChild(meta);
+    }
+    item.appendChild(icon);
+    item.appendChild(body);
+    list.appendChild(item);
+  });
+}
 function applyAfterData(){const s=getSettings();if(s.displayMode==='ref'&&s.activeRoot)computeReachable(s.activeRoot);renderAll();}
 function updateStats(st){if(st&&st.stats)document.getElementById('file-count').textContent=(st.stats.total_files||0)+' 文件 · '+(st.stats.total_edges||0)+' 边';if(st&&st.project_root)document.getElementById('footer-path').textContent=st.project_root;}
 async function handleProjectSwitched(data){S.activeProject={name:data.name,root:data.root};await loadSettings();S.files=data.files||[];S._dagReachable=null;S.graphData=data.graph||null;computeStaleMap();const s=getSettings();if(s.displayMode==='ref'&&s.activeRoot)computeReachable(s.activeRoot);else S.reachableSet=new Set();renderProjectTabs();renderAll();updateStats(data);showToast('已切换到项目：'+data.name);}
@@ -725,6 +799,7 @@ document.querySelectorAll('.filter-standalone').forEach(cb=>cb.addEventListener(
 document.querySelectorAll('.filter-external').forEach(cb=>cb.addEventListener('change',e=>onFilterChange(e)));
 document.querySelectorAll('.filter-hidden').forEach(cb=>cb.addEventListener('change',e=>onFilterChange(e)));
 ['chk-ref-base','chk-ref-standalone','chk-dir-base','chk-dir-standalone','chk-dep-base','chk-dep-standalone'].forEach(id=>{const cb=document.getElementById(id);if(cb)cb.addEventListener('change',e=>onFilterChange(e));});
+document.querySelectorAll('.history-filter').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.history-filter').forEach(b=>b.classList.remove('active'));btn.classList.add('active');loadHistory(btn.dataset.filter);}));
 // Refresh buttons: clear saved positions and re-render with computed layout
 document.getElementById('btn-ref-refresh')?.addEventListener('click',()=>{lsSet('reftree_positions',null);renderRefTreeGraph();});
 document.getElementById('btn-dir-refresh')?.addEventListener('click',()=>{lsSet('dirtree_positions',null);renderDirTreeGraph();});
@@ -737,7 +812,7 @@ document.getElementById('btn-tree-collapse').addEventListener('click',()=>{docum
 document.getElementById('btn-ref-save').addEventListener('click',()=>{saveRefTreePositions();showToast('引用树图布局已保存');});
 document.getElementById('btn-dir-save').addEventListener('click',()=>{saveDirTreePositions();showToast('目录树图布局已保存');});
 document.getElementById('btn-dep-save').addEventListener('click',()=>{saveDepPositions();showToast('依赖图布局已保存');});
-document.querySelectorAll('.tab').forEach(tab=>{tab.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));tab.classList.add('active');document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));document.getElementById('tab-'+tab.dataset.tab).classList.add('active');if(tab.dataset.tab==='ref-tree'){setTimeout(()=>{if(S.netRefTree)S.netRefTree.redraw();},100);}if(tab.dataset.tab==='dir-tree'){setTimeout(()=>{if(S.netDirTree)S.netDirTree.redraw();},100);}if(tab.dataset.tab==='dep-graph'){setTimeout(()=>{if(S.netDepGraph)S.netDepGraph.redraw();},100);}});});
+document.querySelectorAll('.tab').forEach(tab=>{tab.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));tab.classList.add('active');document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));document.getElementById('tab-'+tab.dataset.tab).classList.add('active');if(tab.dataset.tab==='history')loadHistory();if(tab.dataset.tab==='ref-tree'){setTimeout(()=>{if(S.netRefTree)S.netRefTree.redraw();},100);}if(tab.dataset.tab==='dir-tree'){setTimeout(()=>{if(S.netDirTree)S.netDirTree.redraw();},100);}if(tab.dataset.tab==='dep-graph'){setTimeout(()=>{if(S.netDepGraph)S.netDepGraph.redraw();},100);}});});
 document.getElementById('fi-parents-header').addEventListener('click',()=>{const be=document.getElementById('fi-parents-list');be.style.display=be.style.display!=='none'?'none':'block';document.getElementById('fi-parents-header').querySelector('.fi-arrow').classList.toggle('expanded');});
 document.getElementById('fi-children-header').addEventListener('click',()=>{const be=document.getElementById('fi-children-list');be.style.display=be.style.display!=='none'?'none':'block';document.getElementById('fi-children-header').querySelector('.fi-arrow').classList.toggle('expanded');});
 document.getElementById('btn-show-detail').addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.querySelector('[data-tab="detail"]').classList.add('active');document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));document.getElementById('tab-detail').classList.add('active');});
