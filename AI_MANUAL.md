@@ -473,6 +473,7 @@ On project_switched event:
 - **Reference tree graph** uses hierarchical layout on first render, destroys and recreates with free-form physics after 1.5s. On subsequent renders, starts free-form directly.
 - **`onFilterChange`** is the single handler for ALL filter checkboxes across all tabs. It reads `e.target.id` to determine which filter changed.
 - **vis-network 4.21 auto group colors**: Do NOT set node `group` properties when per-node dark colors are desired. vis-network auto-assigns light default group colors to unknown groups and can override `color.background`; the fix removed `group` from `renderMemoryRefTree`, `renderMemoryDirTree`, and `renderDepGraph` nodes.
+- **Graph click tree highlight**: `selectFile()` does NOT update the file tree DOM. Graph click handlers call `highlightInTree(path)` separately to set tree selection highlighting and scroll the matched item into view.
 
 ### Server specifics
 

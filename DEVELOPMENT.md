@@ -542,4 +542,6 @@ git init && git add -A && git commit
 | 10 | v4.4 | 主题切换后图保持浅色 | 主题按钮只改了 `data-theme` 未调用 `renderAll()`，节点颜色不变 | 主题切换末尾追加 `renderAll()` |
 | 11 | v4.4 | 主题切换后图仍浅色 | vis-network 4.21 的 group 默认样式自动覆盖 per-node `color.background` | 移除节点 `group` 字段，bump 到 `app.js?v=4.5.0` |
 
+- 图中点击节点 → 文件树高亮对应项并滚动到位（`highlightInTree`）
+
 （v4.4 完）
