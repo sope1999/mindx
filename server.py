@@ -262,6 +262,31 @@ def api_files():
     return jsonify(files)
 
 
+# 获取指定文件的所有反向链接（引用该文件的来源）
+@app.route("/api/file/<path:file_path>/backlinks")
+def api_file_backlinks(file_path: str):
+    """Get all backlinks (incoming edges) for a specific file."""
+    if active_project is None:
+        return jsonify({"error": "No active project"}), 400
+
+    engine = engines.get(active_project)
+    if engine is None:
+        return jsonify({"error": "Engine not ready"}), 500
+
+    if file_path not in engine.files:
+        return jsonify({"backlinks": []})
+
+    backlinks = []
+    for source, target, data in engine.graph.in_edges(file_path, data=True):
+        backlinks.append({
+            "from": source,
+            "link_type": data.get("link_type", "md_link") if data else "md_link",
+            "context": data.get("context", "") if data else "",
+        })
+
+    return jsonify({"backlinks": backlinks})
+
+
 @app.route("/api/file/<path:file_path>")
 def api_file_detail(file_path: str):
     """Get details for a specific file in active project."""
@@ -308,31 +333,6 @@ def api_file_detail(file_path: str):
     result["issues"] = issues
 
     return jsonify(result)
-
-
-# 获取指定文件的所有反向链接（引用该文件的来源）
-@app.route("/api/file/<path:file_path>/backlinks")
-def api_file_backlinks(file_path: str):
-    """Get all backlinks (incoming edges) for a specific file."""
-    if active_project is None:
-        return jsonify({"error": "No active project"}), 400
-
-    engine = engines.get(active_project)
-    if engine is None:
-        return jsonify({"error": "Engine not ready"}), 500
-
-    if file_path not in engine.files:
-        return jsonify({"backlinks": []})
-
-    backlinks = []
-    for source, target, data in engine.graph.in_edges(file_path, data=True):
-        backlinks.append({
-            "from": source,
-            "link_type": data.get("link_type", "md_link") if data else "md_link",
-            "context": data.get("context", "") if data else "",
-        })
-
-    return jsonify({"backlinks": backlinks})
 
 
 @app.route("/api/graph")
