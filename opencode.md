@@ -116,6 +116,8 @@ C:\SOFT\AI\mindx\
 - 依赖：`mcp`（Python MCP SDK）、`requests`（`requirements-mcp.txt`）
 - 新增：事件历史记录面板（📋 历史），持久化文件变更与同步操作到 `.mindx/history.json`，支持 3 天回溯、按类型筛选（全部/变更/同步）；新增 `GET /api/history?days=3&type=all` 路由
 - 新增 AI 规则 #10：禁止 `bash` 启动长驻进程，改用 `Start-Process -WindowStyle Hidden`
+- 修复：重命名文件后图状态不一致——`cef117c` 的手动拼图逻辑与 watchdog 存在竞态条件，且缺 `else` 分支；改回 `update_file()` 统一入口（`server.py` 第 767-776 行）
+- 修复：重新扫描按钮只做页面刷新而非真正磁盘扫描；改为异步调 `/api/scan` + `_load_externals()` + loading 状态 + 扫描完成提示
 
 ### v4.3（2026-05-17）
 - 设置持久化迁移至 config.yaml（分类覆写、排除目录、显示模式）
@@ -189,6 +191,20 @@ python server.py
 # 访问 http://127.0.0.1:5020
 # 首次启动会自动创建 config.yaml
 # 通过界面 "＋ 添加项目" 添加要追踪的文件夹
+```
+
+### MCP 服务器（AI 编程助手集成）
+
+```bash
+pip install -r requirements-mcp.txt
+python mcp_server.py
+
+# Cursor/Claude Desktop 配置：
+# {
+#   "mcpServers": {
+#     "mindx": { "command": "python", "args": ["C:/SOFT/AI/mindx/mcp_server.py"] }
+#   }
+# }
 ```
 
 > 最后更新：2026-05-22 | 当前版本：v4.5

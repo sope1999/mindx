@@ -592,27 +592,11 @@ AI 工具 ←─stdio─→ mcp_server.py ←─HTTP─→ server.py:5020
 
 ### Bug 表
 
-（v4.5 无新 Bug）
+### Bug 表
 
-### 配置示例
-
-```json
-{
-  "mcpServers": {
-    "mindx": {
-      "command": "python",
-      "args": ["C:/SOFT/AI/mindx/mcp_server.py"]
-    }
-  }
-}
-```
-
-### 事件历史面板
-
-- 持久化事件记录到项目根目录 `.mindx/history.json`（JSON 增量追加）
-- `GraphEngine._load_history()` 启动时加载并自动清理 >3 天记录
-- `update_file()` 在每次变更事件和同步建议时写入 history
-- `GET /api/history?days=3&type=all|changes|sync` 查询 API
-- 前端新增第 5 个标签页 📋 历史：时间线视图，支持按类型筛选，点击文件名跳转到详情
+| # | 版本 | 现象 | 根因 | 修复 |
+|---|------|------|------|------|
+| 12 | v4.5 | 重命名文件后不在文件列表中，重新扫描也不出现 | `cef117c` 手动拼图逻辑与 watchdog `update_file()` 竞态，缺 `else` 分支导致旧文件不在图中时新文件永不注册 | 改回 `update_file()` 统一入口（`66c6c77`） |
+| 13 | v4.5 | "重新扫描"按钮只刷新页面，不扫描磁盘 | `btn-rescan` 绑定 `location.reload()`，从未调用 `/api/scan` | 改为异步调 `/api/scan` + `_load_externals()` + loading（`0895ac7`） |
 
 （v4.5 完）
