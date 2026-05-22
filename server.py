@@ -787,6 +787,9 @@ def api_rename_execute():
         for src, edata in in_edges:
             if src != old_path:
                 engine.graph.add_edge(src, new_path, **edata)
+    else:
+        # Old file not in graph — register new file via standard path
+        engine.update_file(new_path, "created")
 
     return jsonify({
         "success": True,
