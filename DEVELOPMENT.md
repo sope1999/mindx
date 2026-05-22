@@ -1,6 +1,6 @@
 # mindx 开发文档
 
-> 记录 mindx（Memory Index Tracker）从概念到 v4.5 的完整开发过程。
+> 记录 mindx（Memory Index Tracker）从概念到 v4.6 的完整开发过程。
 > 项目路径：`C:\SOFT\AI\mindx\`
 
 ---
@@ -316,7 +316,7 @@ Markdown 链接 `[→](path)` 被 parser 自动解析。纯文本引用通过 `i
 新：config.yaml (配置驱动) → engines{} 字典 → watchers{} 字典 → per-project 管理
 ```
 
-> 最后更新：2026-05-19 | 当前版本：v4.5
+> 最后更新：2026-05-22 | 当前版本：v4.5
 
 ---
 
@@ -545,3 +545,66 @@ git init && git add -A && git commit
 - 图中点击节点 → 文件树高亮对应项并滚动到位（`highlightInTree`）
 
 （v4.4 完）
+
+## 十三、v4.5 — MCP 服务器
+
+> **关键决策**：MCP 服务器采用纯 HTTP 代理模式，通过 `requests` 调用 `server.py` 的 HTTP API，不重复实现图引擎逻辑。项目选择走运行时 `switch_project` 工具而非 `--project` 参数。
+
+### 背景
+
+mindx 作为开发者日常使用的知识图谱工具，积累了大量文件引用关系数据。AI 编程助手（Cursor、Claude Desktop）需要通过 MCP 协议获取这些上下文来理解项目结构。
+
+### 技术方案
+
+```
+AI 工具 ←─stdio─→ mcp_server.py ←─HTTP─→ server.py:5020
+                      ↓
+                config.yaml（启动时读取）
+```
+
+- **新增文件**：`mcp_server.py`（423 行）
+- **新增依赖**：`requirements-mcp.txt`（mcp>=1.0.0, requests>=2.28.0）
+- **server.py 补充**：
+  - `GET /api/file/<path>/backlinks` — 文件入链查询
+  - `GET /api/broken-links` — 全项目断链汇总
+
+### 13 个 MCP 工具
+
+| 分类 | 工具 | 实现 |
+|------|------|------|
+| 项目管理 | `list_projects`, `switch_project` | 读 config.yaml，设进程级变量 |
+| 文件浏览 | `list_files`, `search_files`, `get_file_content`, `get_file_info` | HTTP 调 Flask + 磁盘 I/O |
+| 引用关系 | `get_references`, `get_backlinks`, `get_dependency_graph` | HTTP 调 Flask |
+| 诊断维护 | `get_broken_links`, `get_sync_suggestions`, `get_change_log` | HTTP 调 Flask |
+| 文件操作 | `rename_file` | 两步 HTTP（preview → execute），原子更新引用 |
+
+### 状态管理
+
+- 无 `--project` 参数，MCP 实例可服务所有项目
+- `current_project = None` 初始状态，`switch_project` 切换
+- `list_projects` 始终可用；其他工具缺少项目时返回可执行错误提示
+- 错误处理分层：项目未选 / Flask 不通 / 文件不存在
+
+### 坑
+
+- **路由顺序**：`/api/file/<path>/backlinks` 必须定义在 `/api/file/<path>` 之前，否则 Flask 的 `<path:file_path>` 会将 `MEMORY.md/backlinks` 当成完整路径吞掉（commit `e3ff74b`）
+- **端点命名不一致**：`get_sync_suggestions` 调用 `/api/sync-check`（非 `/api/sync-suggestions`）
+
+### Bug 表
+
+（v4.5 无新 Bug）
+
+### 配置示例
+
+```json
+{
+  "mcpServers": {
+    "mindx": {
+      "command": "python",
+      "args": ["C:/SOFT/AI/mindx/mcp_server.py"]
+    }
+  }
+}
+```
+
+（v4.5 完）
