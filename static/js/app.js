@@ -681,6 +681,7 @@ async function initAll(){
   await loadSettings();
   try{const st=await api('/api/status');updateStats(st);document.getElementById('footer-path').textContent=st.project_root||'—';document.getElementById('footer-watching').textContent=st.watching?'👁 监听中':'⏸ 暂停';document.getElementById('no-project-state').style.display='none';document.getElementById('app').style.display='flex';}catch(e){}
   await fetchFiles();await fetchGraph();await loadPositionsFallback();renderAll();
+  loadHistory();
 }
 async function fetchFiles(){S.files=await api('/api/files');computeStaleMap();applyAfterData();}
 async function fetchGraph(){S._dagReachable=null;S.graphData=await api('/api/graph');computeStaleMap();applyAfterData();}
@@ -699,10 +700,8 @@ async function loadHistory(filter) {
 }
 function renderHistory(entries, activeFilter) {
   const list = document.getElementById('history-list');
-  const count = document.getElementById('history-count');
   if (!list) return;
   list.innerHTML = '';
-  if (count) count.textContent = '共 '+entries.length+' 条';
   document.querySelectorAll('.history-filter').forEach(btn=>btn.classList.toggle('active',btn.dataset.filter===(activeFilter||'all')));
   if (!entries.length) {
     const empty = document.createElement('p');
@@ -812,7 +811,7 @@ document.getElementById('btn-tree-collapse').addEventListener('click',()=>{docum
 document.getElementById('btn-ref-save').addEventListener('click',()=>{saveRefTreePositions();showToast('引用树图布局已保存');});
 document.getElementById('btn-dir-save').addEventListener('click',()=>{saveDirTreePositions();showToast('目录树图布局已保存');});
 document.getElementById('btn-dep-save').addEventListener('click',()=>{saveDepPositions();showToast('依赖图布局已保存');});
-document.querySelectorAll('.tab').forEach(tab=>{tab.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));tab.classList.add('active');document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));document.getElementById('tab-'+tab.dataset.tab).classList.add('active');if(tab.dataset.tab==='history')loadHistory();if(tab.dataset.tab==='ref-tree'){setTimeout(()=>{if(S.netRefTree)S.netRefTree.redraw();},100);}if(tab.dataset.tab==='dir-tree'){setTimeout(()=>{if(S.netDirTree)S.netDirTree.redraw();},100);}if(tab.dataset.tab==='dep-graph'){setTimeout(()=>{if(S.netDepGraph)S.netDepGraph.redraw();},100);}});});
+document.querySelectorAll('.tab').forEach(tab=>{tab.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));tab.classList.add('active');document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));document.getElementById('tab-'+tab.dataset.tab).classList.add('active');if(tab.dataset.tab==='ref-tree'){setTimeout(()=>{if(S.netRefTree)S.netRefTree.redraw();},100);}if(tab.dataset.tab==='dir-tree'){setTimeout(()=>{if(S.netDirTree)S.netDirTree.redraw();},100);}if(tab.dataset.tab==='dep-graph'){setTimeout(()=>{if(S.netDepGraph)S.netDepGraph.redraw();},100);}});});
 document.getElementById('fi-parents-header').addEventListener('click',()=>{const be=document.getElementById('fi-parents-list');be.style.display=be.style.display!=='none'?'none':'block';document.getElementById('fi-parents-header').querySelector('.fi-arrow').classList.toggle('expanded');});
 document.getElementById('fi-children-header').addEventListener('click',()=>{const be=document.getElementById('fi-children-list');be.style.display=be.style.display!=='none'?'none':'block';document.getElementById('fi-children-header').querySelector('.fi-arrow').classList.toggle('expanded');});
 document.getElementById('btn-show-detail').addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.querySelector('[data-tab="detail"]').classList.add('active');document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));document.getElementById('tab-detail').classList.add('active');});
