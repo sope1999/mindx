@@ -805,7 +805,22 @@ document.querySelectorAll('.tab').forEach(tab=>{tab.addEventListener('click',()=
 document.getElementById('fi-parents-header').addEventListener('click',()=>{const be=document.getElementById('fi-parents-list');be.style.display=be.style.display!=='none'?'none':'block';document.getElementById('fi-parents-header').querySelector('.fi-arrow').classList.toggle('expanded');});
 document.getElementById('fi-children-header').addEventListener('click',()=>{const be=document.getElementById('fi-children-list');be.style.display=be.style.display!=='none'?'none':'block';document.getElementById('fi-children-header').querySelector('.fi-arrow').classList.toggle('expanded');});
 document.getElementById('btn-show-detail').addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.querySelector('[data-tab="detail"]').classList.add('active');document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));document.getElementById('tab-detail').classList.add('active');});
-document.getElementById('btn-rescan').addEventListener('click',()=>location.reload());
+document.getElementById('btn-rescan').addEventListener('click',async()=>{
+  const btn=document.getElementById('btn-rescan');
+  const orig=btn.textContent;
+  btn.textContent='⏳ 扫描中...';
+  btn.disabled=true;
+  try{
+    const stats=await api('/api/scan');
+    await fetchFiles();await fetchGraph();renderAll();
+    showToast(`扫描完成：${stats.total_files} 个文件，${stats.total_edges} 条引用`);
+  }catch(e){
+    showToast('扫描失败：'+e.message);
+  }finally{
+    btn.textContent=orig;
+    btn.disabled=false;
+  }
+});
 document.getElementById('tree-filter').addEventListener('input',renderFileTree);
 document.getElementById('btn-add-project').addEventListener('click',addProject);
 document.getElementById('btn-no-project-add').addEventListener('click',addProject);

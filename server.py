@@ -356,6 +356,7 @@ def api_scan():
         return jsonify({"error": "Engine not ready"}), 500
 
     engine.scan_all()
+    _load_externals(active_project, engine)
     stats = engine.get_stats()
     return jsonify(stats)
 
