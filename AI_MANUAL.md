@@ -1,4 +1,4 @@
-# mindx v4.4 — AI-Readable Project Manual
+# mindx v4.4–4.5 — AI-Readable Project Manual
 
 > This document is the single source of truth for AI agents working on mindx.
 > Last verified against source: 2026-05-19.
@@ -428,6 +428,7 @@ On project_switched event:
 5. Constants: `Y_DIR=110, Y_FILE=80, X_UNIT=100, X_MIN=60`
 6. Physics is **disabled** (`physics: {enabled: false}`)
 7. Root node `__ROOT__` at `(0, 0)` with project name
+8. If vis.js nodes already specify `color`, do NOT set `group`; vis-network 4.21 can apply light default group colors over per-node dark colors.
 
 ### Adding a sync rule
 
@@ -471,6 +472,7 @@ On project_switched event:
 - **Tab switching triggers `redraw()`** on vis.js networks after 100ms timeout (container needs to be visible first)
 - **Reference tree graph** uses hierarchical layout on first render, destroys and recreates with free-form physics after 1.5s. On subsequent renders, starts free-form directly.
 - **`onFilterChange`** is the single handler for ALL filter checkboxes across all tabs. It reads `e.target.id` to determine which filter changed.
+- **vis-network 4.21 auto group colors**: Do NOT set node `group` properties when per-node dark colors are desired. vis-network auto-assigns light default group colors to unknown groups and can override `color.background`; the fix removed `group` from `renderMemoryRefTree`, `renderMemoryDirTree`, and `renderDepGraph` nodes.
 
 ### Server specifics
 

@@ -1,4 +1,4 @@
-# mindx 开发文档（v4.4）
+# mindx 开发文档（v4.4–4.5）
 
 > ⚠️ **AI 开发规则（不可跳过）：**
 > 1. 改代码必须走 task agent：小改动 `task(category="quick")`，复杂重构 `task(category="deep")`
@@ -87,6 +87,8 @@ C:\SOFT\AI\mindx\
 - 筛选状态跨会话持久化（localStorage 按项目命名空间）
 - 开发时刷新按钮替代保存坐标
 - 修复：自环边 Kahn 死锁、绝对路径边被过滤、savedPos 覆盖手动坐标、孤立检测覆盖 Kahn 节点、自环边过滤（from===to 不渲染）、双向引用合并为单条双向箭头（seenBi 去重）、全局箭头配置（edges.arrows.to+from enabled）
+- 修复：主题切换按钮只更新 `data-theme` 和 localStorage，未调用 `renderAll()`，导致三张 vis-network 图沿用旧主题节点颜色；在主题切换末尾追加 `renderAll()` 重建图。
+- 修复：vis-network 4.21 会给未知 group 自动套浅色默认样式并覆盖 per-node `color.background`；移除三张图节点数据中的 `group` 字段，并 bump 到 `app.js?v=4.5.0`。
 
 ### v4.3（2026-05-17）
 - 设置持久化迁移至 config.yaml（分类覆写、排除目录、显示模式）
@@ -162,4 +164,4 @@ python server.py
 # 通过界面 "＋ 添加项目" 添加要追踪的文件夹
 ```
 
-> 最后更新：2026-05-19 | 当前版本：v4.4
+> 最后更新：2026-05-19 | 当前版本：v4.4–4.5

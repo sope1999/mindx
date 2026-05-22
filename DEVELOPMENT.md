@@ -1,6 +1,6 @@
 # mindx 开发文档
 
-> 记录 mindx（Memory Index Tracker）从概念到 v4.4 的完整开发过程。
+> 记录 mindx（Memory Index Tracker）从概念到 v4.5 的完整开发过程。
 > 项目路径：`C:\SOFT\AI\mindx\`
 
 ---
@@ -539,5 +539,7 @@ git init && git add -A && git commit
 | 绝对路径边在 computeRefLevels 中被过滤 | 外部文件使用绝对路径作为节点 ID，与项目相对路径不匹配 | 统一使用节点 ID 查找，不假设路径格式 |
 | savedPos 后覆盖手动坐标 | `renderMemoryRefTree` 先应用手动坐标，后被 savedPos 覆盖 | 优先级调整：savedPos > 手动拖动 > 自动布局 |
 | 孤立检测覆盖已处理的 Kahn 节点 | 孤立节点（无入边无出边）在 Kahn 处理后又被孤立检测重复处理 | 孤立检测跳过已在 Kahn 结果中的节点 |
+| 10 | v4.4 | 主题切换后图保持浅色 | 主题按钮只改了 `data-theme` 未调用 `renderAll()`，节点颜色不变 | 主题切换末尾追加 `renderAll()` |
+| 11 | v4.4 | 主题切换后图仍浅色 | vis-network 4.21 的 group 默认样式自动覆盖 per-node `color.background` | 移除节点 `group` 字段，bump 到 `app.js?v=4.5.0` |
 
 （v4.4 完）
