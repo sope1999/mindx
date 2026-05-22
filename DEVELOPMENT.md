@@ -316,7 +316,7 @@ Markdown 链接 `[→](path)` 被 parser 自动解析。纯文本引用通过 `i
 新：config.yaml (配置驱动) → engines{} 字典 → watchers{} 字典 → per-project 管理
 ```
 
-> 最后更新：2026-05-19 | 当前版本：v4.4
+> 最后更新：2026-05-19 | 当前版本：v4.5
 
 ---
 
