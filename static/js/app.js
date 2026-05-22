@@ -339,21 +339,24 @@ function batchAction(type){
 }
 
 // ── Batch select ──
-function toggleSelectMode(){S.selectMode=!S.selectMode;S.selectedFiles.clear();updateSelectUI();initDragSelect();renderFileTree();}
+function toggleSelectMode(){S.selectMode=!S.selectMode;S.selectedFiles.clear();updateSelectUI();if(!S.selectMode)cleanupDragSelect();else initDragSelect();renderFileTree();}
 function updateSelectUI(){const btn=document.getElementById('btn-tree-select');const bar=document.getElementById('batch-bar');if(S.selectMode){btn.classList.add('active');bar.style.display='flex';}else{btn.classList.remove('active');bar.style.display='none';}updateBatchCount();}
 function updateBatchCount(){document.getElementById('batch-count').textContent='已选 '+S.selectedFiles.size+' 个文件';}
 function toggleFileSelect(path){if(S.selectedFiles.has(path))S.selectedFiles.delete(path);else S.selectedFiles.add(path);updateBatchCount();const cb=document.querySelector('.tree-cb[data-path="'+CSS.escape(path)+'"]');if(cb)cb.checked=S.selectedFiles.has(path);}
 function batchHideSelected(){for(const p of S.selectedFiles)setClassification(p,'hidden');S.selectedFiles.clear();S.selectMode=false;updateSelectUI();renderAll();}
 function batchCancel(){S.selectedFiles.clear();S.selectMode=false;updateSelectUI();renderFileTree();}
 
-let _dragBox=null,_dragStart=null;
+let _dragBox=null,_dragStart=null,_dragMouseMove=null,_dragMouseUp=null;
+function cleanupDragSelect(){if(_dragMouseMove){document.removeEventListener('mousemove',_dragMouseMove);_dragMouseMove=null;}if(_dragMouseUp){document.removeEventListener('mouseup',_dragMouseUp);_dragMouseUp=null;}}
 function initDragSelect(){
   if(_dragBox)return;
   _dragBox=document.createElement('div');_dragBox.id='drag-box';_dragBox.className='drag-box';document.body.appendChild(_dragBox);
   const tree=document.getElementById('file-tree');
   tree.addEventListener('mousedown',e=>{if(!S.selectMode||e.button!==0)return;if(e.target.closest('.tree-toggle')||e.target.closest('.tree-cb'))return;_dragStart={x:e.clientX,y:e.clientY};_dragBox.style.display='none';e.preventDefault();});
-  document.addEventListener('mousemove',e=>{if(!_dragStart||!S.selectMode)return;const x1=Math.min(_dragStart.x,e.clientX),y1=Math.min(_dragStart.y,e.clientY),x2=Math.max(_dragStart.x,e.clientX),y2=Math.max(_dragStart.y,e.clientY);if(x2-x1<5&&y2-y1<5)return;_dragBox.style.cssText=`display:block;left:${x1}px;top:${y1}px;width:${x2-x1}px;height:${y2-y1}px`;});
-  document.addEventListener('mouseup',e=>{if(!_dragStart)return;_dragBox.style.display='none';const x1=Math.min(_dragStart.x,e.clientX),y1=Math.min(_dragStart.y,e.clientY),x2=Math.max(_dragStart.x,e.clientX),y2=Math.max(_dragStart.y,e.clientY);const w=x2-x1,h=y2-y1;_dragStart=null;if(w<5&&h<5)return;const items=document.querySelectorAll('#file-tree .tree-item');for(const item of items){if(!item.dataset.path||item.classList.contains('group-node'))continue;const r=item.getBoundingClientRect();if(r.right>x1&&r.left<x2&&r.bottom>y1&&r.top<y2)S.selectedFiles.add(item.dataset.path);}updateBatchCount();renderFileTree();});
+  _dragMouseMove=e=>{if(!_dragStart||!S.selectMode)return;const x1=Math.min(_dragStart.x,e.clientX),y1=Math.min(_dragStart.y,e.clientY),x2=Math.max(_dragStart.x,e.clientX),y2=Math.max(_dragStart.y,e.clientY);if(x2-x1<5&&y2-y1<5)return;_dragBox.style.cssText=`display:block;left:${x1}px;top:${y1}px;width:${x2-x1}px;height:${y2-y1}px`;};
+  _dragMouseUp=e=>{if(!_dragStart)return;_dragBox.style.display='none';const x1=Math.min(_dragStart.x,e.clientX),y1=Math.min(_dragStart.y,e.clientY),x2=Math.max(_dragStart.x,e.clientX),y2=Math.max(_dragStart.y,e.clientY);const w=x2-x1,h=y2-y1;_dragStart=null;if(w<5&&h<5)return;const items=document.querySelectorAll('#file-tree .tree-item');for(const item of items){if(!item.dataset.path||item.classList.contains('group-node'))continue;const r=item.getBoundingClientRect();if(r.right>x1&&r.left<x2&&r.bottom>y1&&r.top<y2)S.selectedFiles.add(item.dataset.path);}updateBatchCount();renderFileTree();};
+  document.addEventListener('mousemove',_dragMouseMove);
+  document.addEventListener('mouseup',_dragMouseUp);
 }
 
 // ── Settings ──
@@ -667,7 +670,8 @@ function showToast(msg){let t=document.getElementById('mindx-toast');if(!t){t=do
 // ── Socket & API ──
 function connectSocket(){
   S.socket=io({transports:['websocket','polling']});
-  S.socket.on('connect',()=>{document.getElementById('status-dot').className='status-dot connected';document.getElementById('footer-watching').textContent='👁 监听中';initAll();});
+  let _initAllRunning=false;
+S.socket.on('connect',()=>{document.getElementById('status-dot').className='status-dot connected';document.getElementById('footer-watching').textContent='👁 监听中';if(_initAllRunning)return;_initAllRunning=true;initAll().finally(()=>{_initAllRunning=false;});});
   S.socket.on('disconnect',()=>{document.getElementById('status-dot').className='status-dot';document.getElementById('footer-watching').textContent='⏳ 断开连接';});
   S.socket.on('file_changed',data=>{addChangeEvent(data.file,data.event);fetchFiles();fetchGraph().then(()=>{const s=getSettings();if(s.displayMode==='ref'&&s.activeRoot)computeReachable(s.activeRoot);renderAll();});});
   S.socket.on('sync_needed',data=>{addSuggestion(data.file,{target:data.target||data.file,reason:data.reason||'',severity:data.severity||'info',action:data.action||''});});

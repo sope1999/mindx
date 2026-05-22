@@ -138,6 +138,10 @@ def tool_get_file_content(path: str) -> dict:
         return {"_error": f"文件不存在: {path}"}
     if not target.is_file():
         return {"_error": f"不是文件: {path}"}
+    MAX_SIZE = 10 * 1024 * 1024  # 10 MB
+    file_size = target.stat().st_size
+    if file_size > MAX_SIZE:
+        return {"_error": f"File too large: {file_size} bytes (max {MAX_SIZE})"}
     try:
         content = target.read_text(encoding="utf-8")
     except UnicodeDecodeError:

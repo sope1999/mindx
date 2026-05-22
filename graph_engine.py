@@ -50,12 +50,17 @@ class GraphEngine:
         if not self._history_dir.exists():
             self._history_dir.mkdir(exist_ok=True)
         if self._history_file.exists():
+            import json as _json
             try:
-                import json as _json
-                raw = _json.loads(self._history_file.read_text(encoding="utf-8"))
+                data = _json.loads(self._history_file.read_text(encoding="utf-8"))
+            except Exception:
+                print("[mindx] Warning: history.json is corrupted, starting fresh")
+                self._history = []
+                return
+            try:
                 cutoff = datetime.now().timestamp() - 3 * 86400
                 self._history = [
-                    e for e in raw
+                    e for e in data
                     if self._parse_ts(e.get("timestamp", "")) >= cutoff
                 ]
             except Exception:
@@ -80,8 +85,11 @@ class GraphEngine:
             if self._parse_ts(e.get("timestamp", "")) >= cutoff
         ]
         self._history_dir.mkdir(exist_ok=True)
-        with open(self._history_file, "w", encoding="utf-8") as f:
+        import os
+        tmp = str(self._history_file) + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
             _json.dump(self._history, f, ensure_ascii=False, indent=2, default=str)
+        os.replace(tmp, str(self._history_file))
 
     def get_history(self, days: int = 3, type_filter: str = "all") -> dict:
         """Return persisted history entries filtered by days and type."""
@@ -160,7 +168,15 @@ class GraphEngine:
                         abs_path = self.project_root / target
                         t_info = parse_file(abs_path, self.project_root)
                         new_files[t_info.path] = t_info
-                    self.graph.add_edge(file_info.path, target,
+                        edge_target = t_info.path
+                    else:
+                        # t_info already parsed; find its normalized path
+                        edge_target = target
+                        if target in new_files:
+                            edge_target = new_files[target].path
+                        elif target in self.files:
+                            edge_target = self.files[target].path
+                    self.graph.add_edge(file_info.path, edge_target,
                                         link_type=link.link_type,
                                         context=link.context[:100])
                 elif link.is_external:
