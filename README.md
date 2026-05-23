@@ -1,31 +1,32 @@
-# mindx
+# mindx — .md 文件关系可视化工具
 
-**.md 文件关系可视化工具** — 追踪 Markdown 文件之间的引用关系，通过多视图实时展示项目结构和依赖网络。
+mindx v4.5 用来追踪 Markdown 文件之间的引用关系，提供 Web 可视化界面、实时文件监听、外部文件挂载、断链诊断、文件重命名维护，以及供 AI 编程助手使用的 MCP 服务器。
 
 ## 功能
 
 | 功能 | 说明 |
 |------|------|
-| **多项目管理** | 标签栏切换，配置持久化到 `config.yaml` |
-| **文件监听** | watchdog 实时追踪 `.md` 增删改，WebSocket 推送 |
-| **引用解析** | 自动提取 `[→](path)` 链接，构建有向依赖图 |
-| **双显示模式** | 全量显示 / 按引用显示（指定根文件，沿出边 BFS 扩展） |
-| **四视图** | 文件树、引用树图、目录树图、依赖图 |
-| **外部文件挂载** | 手动挂载外部文件/文件夹，按目录层级显示，重启不丢失 |
-| **框选+批量** | ☑ 多选模式 → 拖拽框选 → 右键批量隐藏/移除/恢复 |
+| 多项目管理 | 在多个 Markdown 项目之间切换，配置保存到 `config.yaml` |
+| 文件监听 | 监听 `.md` 文件新增、修改、删除，并通过 WebSocket 推送到前端 |
+| 引用解析 | 提取标准 Markdown 链接 `[text](path)`，构建文件依赖关系 |
+| 双显示模式 | 支持全量显示和按引用显示，按引用模式从根文件向外扩展 |
+| 四视图 | 文件树、引用树图、目录树图、依赖图 |
+| MCP 服务器 | AI 编程助手集成，提供 13 个上下文工具 |
+| 事件历史记录 | 保留 3 天回溯记录，支持按类型筛选 |
+| 重命名文件 | 预览并执行文件重命名，自动更新所有引用 |
+| 重新扫描 | 执行真正的磁盘扫描，并重新挂载外部文件 |
+| 断链检测 | 汇总项目内失效引用，辅助修复文档关系 |
+| 外部文件挂载 | 挂载项目外文件或目录，按目录层级显示，重启后保留 |
+| 框选和批量操作 | 多选、框选、右键隐藏、移除、恢复节点 |
+| 168 个测试覆盖 | 103 个 Python 测试，65 个前端 JS 测试 |
 
 ## 视图说明
 
-```
-┌────────────┬──────────────────────────┬────────────┐
-│  文件树     │  记忆树图 / 依赖图        │  文件摘要   │
-│  (左栏)     │  (中栏，Tab 切换)         │  (右栏)     │
-│            │                          │            │
-│  📁 目录    │  🌳 引用层级 / 目录层级    │  路径/分类  │
-│  🔗 引用    │  🔗 力导向依赖图         │  上级/下级  │
-│  过滤/隐藏  │  外部链接虚线标注         │  事件/建议  │
-└────────────┴──────────────────────────┴────────────┘
-```
+| 区域 | 内容 |
+|------|------|
+| 左侧文件树 | 项目文件、目录层级、引用状态、过滤和隐藏操作 |
+| 中间主视图 | 引用树图、目录树图、依赖图，支持 Tab 切换 |
+| 右侧面板 | 📡 实时事件、💡 同步建议、📋 历史切换 |
 
 ## 安装
 
@@ -33,26 +34,24 @@
 git clone https://github.com/yourname/mindx.git
 cd mindx
 pip install -r requirements.txt
-```
-
-Python 依赖：
-
-```
-flask>=3.0
-flask-socketio>=5.3
-watchdog>=5.0
-networkx>=3.2
-pyyaml>=6.0
+pip install -r requirements-mcp.txt    # MCP 服务器依赖
+npm install                             # 前端测试依赖
 ```
 
 ## 启动
 
 ```bash
-python server.py
-# 访问 http://127.0.0.1:5020
+python server.py              # Web UI
+python mcp_server.py          # MCP 服务器（供 AI 工具连接）
 ```
 
-首次启动自动创建 `config.yaml`。通过界面「＋ 添加项目」选择要追踪的 Markdown 项目文件夹。
+Web UI 默认访问地址：
+
+```text
+http://127.0.0.1:5020
+```
+
+首次启动会自动创建 `config.yaml`。打开界面后，通过“添加项目”选择要追踪的 Markdown 项目文件夹。
 
 ### Windows 后台启动
 
@@ -63,7 +62,7 @@ python server.py
 
 ## 配置
 
-`config.yaml`（自动生成）：
+`config.yaml` 会自动生成，也可以手动调整：
 
 ```yaml
 version: "1.0.0"
@@ -73,111 +72,170 @@ projects:
     root: C:/path/to/my-docs
 ```
 
-## 项目结构
-
-```
-mindx/
-├── server.py            # Flask 主服务 + SocketIO + 多项目 API
-├── parser.py            # Markdown [→](path) 链接解析 + 外部检测
-├── graph_engine.py      # NetworkX 依赖图 + 隐式引用 + 外部轮询
-├── watcher.py           # watchdog 文件监听 + 项目切换
-├── config.py            # config.yaml 管理 + 全局常量
-├── config.yaml          # 用户项目配置
-├── requirements.txt     # Python 依赖
-├── templates/
-│   └── index.html       # 前端入口
-├── static/
-│   ├── css/style.css    # 暗色主题
-│   └── js/app.js        # 前端逻辑
-├── README.md
-├── DEVELOPMENT.md       # 开发历史 + 版本记录
-├── start-mindx.ps1      # Windows 启动脚本
-└── stop-mindx.ps1       # Windows 停止脚本
-```
-
 ## API
 
-| 端点 | 说明 |
-|------|------|
-| `GET /api/projects` | 项目列表 |
-| `POST /api/projects/add` | 添加项目 `{root}` |
-| `POST /api/projects/remove` | 删除项目 `{name}` |
-| `POST /api/projects/select` | 激活项目 `{name}` |
-| `GET /api/status` | 服务状态 |
-| `GET /api/files` | 当前项目文件列表 |
-| `GET /api/file/<path>` | 文件详情（含链接、依赖） |
-| `GET /api/graph` | 完整图数据（nodes + edges） |
-| `GET /api/scan` | 强制全量扫描 |
-| `GET /api/sync-check` | 同步检查报告 |
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/api/projects` | GET | 项目列表 |
+| `/api/projects/add` | POST | 添加项目 |
+| `/api/projects/remove` | POST | 移除项目 |
+| `/api/projects/select` | POST | 激活项目 |
+| `/api/status` | GET | 服务状态 |
+| `/api/files` | GET | 文件列表 |
+| `/api/file/<path>` | GET | 文件详情 |
+| `/api/file/<path>/backlinks` | GET | 入链查询 |
+| `/api/graph` | GET | 完整依赖图 |
+| `/api/scan` | GET | 强制全量扫描（含外部文件重挂载）|
+| `/api/broken-links` | GET | 全项目断链汇总 |
+| `/api/changes` | GET | 变更日志 |
+| `/api/history` | GET | 历史记录（?days=3&type=all）|
+| `/api/sync-check` | GET | 同步检查 |
+| `/api/file/rename-preview` | POST | 重命名预览 |
+| `/api/file/rename-execute` | POST | 执行重命名 |
+| `/api/external/add` | POST | 挂载外部文件 |
+| `/api/external/remove` | POST | 移除外部文件 |
+| `/api/external/list` | GET | 外部文件列表 |
+| `/api/settings` | GET/POST | 项目设置 |
 
 ### WebSocket 事件
 
-| 事件 | 触发 |
+| 事件 | 触发场景 |
+|------|----------|
+| `file_changed` | 项目内 Markdown 文件新增、修改、删除 |
+| `sync_needed` | 检测到关联文件可能需要同步 |
+| `project_switched` | 当前激活项目切换 |
+| `external_changed` | 外部挂载文件变化 |
+
+## MCP 服务器
+
+mindx 支持通过 MCP 协议为 AI 编程助手提供项目上下文：
+
+```json
+{
+  "mcpServers": {
+    "mindx": {
+      "command": "python",
+      "args": ["C:/SOFT/AI/mindx/mcp_server.py"]
+    }
+  }
+}
+```
+
+MCP 服务器提供 13 个工具，覆盖项目管理、文件浏览、引用关系、诊断维护、文件操作等场景。
+
+工具能力概览：
+
+| 类别 | 能力 |
 |------|------|
-| `file_changed` | 文件增删改 |
-| `sync_needed` | 检测到关联文件需同步 |
-| `project_switched` | 切换项目 |
-| `external_changed` | 外部引用文件 mtime 变更 |
+| 项目管理 | 列出项目、选择项目、查看服务状态 |
+| 文件浏览 | 获取文件列表、读取文件详情、查询外部文件 |
+| 引用关系 | 获取完整依赖图、查询入链、检查断链 |
+| 诊断维护 | 强制扫描、查看历史、同步检查 |
+| 文件操作 | 重命名预览、执行重命名、挂载或移除外部文件 |
 
 ## 引用规则
 
-**唯一规则：用标准 Markdown 链接 `[text](path)`。** 不用 implicit-refs.json，不用纯文本箭头。
+mindx 只解析标准 Markdown 链接，格式为 `[text](path)`。
 
-```markdown
-# ✅ mindx 能解析
-[→](memory/tools/claude-code.md)
-[aviation](aviation/overview.md)
+实际匹配规则：
 
-# ❌ 解析不到
-本项目调度 → dev-sessions.md
+```text
+\[([^\]]*?)\]\(([^)]+)\)
 ```
 
-### 必须：索引表用统一格式
+### 可解析示例
+
+| 写法 | 说明 |
+|------|------|
+| `[首页](README.md)` | 引用同目录文件 |
+| `[工具说明](docs/tools.md)` | 引用子目录文件 |
+| `[上级文档](../shared/guide.md)` | 引用上级目录文件 |
+| `[外部资料](C:/notes/shared.md)` | 引用外部绝对路径 |
+
+### 索引表建议
+
+用表格维护索引文件，便于 mindx 生成稳定的引用关系：
 
 ```markdown
 | 条目 | 摘要 | 路径 |
 |------|------|------|
-| Claude Code | AI 编程助手 | [→](memory/tools/claude-code.md) |
-| OpenCode | 会话引擎 | [→](memory/tools/opencode.md) |
+| Claude Code | AI 编程助手 | [Claude Code](memory/tools/claude-code.md) |
+| OpenCode | 会话引擎 | [OpenCode](memory/tools/opencode.md) |
 ```
 
-mindx 从 `[→](path)` 提取链接，建立 INDEX_TO_CHILD 关系。
+mindx 从链接目标中提取路径，并建立当前文件到目标文件的关系。
 
-### 禁止：自引用
+### 避免自引用
 
 ```markdown
-# ❌ 文件引用自己，产生无意义边
-[→](项目开发工作规则.md)
+# 不建议：文件引用自己，会产生无意义边
+[当前文件](README.md)
 ```
 
-### 必须：增删文件时更新索引
+### 增删文件时同步索引
 
-| 操作 | 必须更新 |
-|------|---------|
-| 新增工具文件 | 根索引表加一行 `[→](新文件)` |
-| 删除工具文件 | 根索引表删对应行 |
-| 新增项目 | 索引表加行 + `_index.md` 加行 |
-| 新增根目录 .md | 判断分类，必要时更新索引 |
+| 操作 | 建议同步内容 |
+|------|--------------|
+| 新增工具文件 | 在根索引表加一行链接 |
+| 删除工具文件 | 删除索引表中的对应行 |
+| 新增项目目录 | 在项目索引文件加入入口 |
+| 移动或重命名文件 | 使用重命名功能自动更新引用 |
+
+### 外部文件引用
+
+引用项目目录外的文件会被标记为外部链接。外部文件可以通过界面或 API 挂载，并在重新扫描时恢复挂载关系。
+
+```markdown
+[共享规范](../shared/MEMORY.md)
+```
 
 ### 引用模式（按引用显示）
 
-引用项目目录外的文件会被自动标记为外部链接，依赖图中以虚线显示，30 秒轮询 mtime。
+在设置中切换到“按引用显示”后，mindx 从指定根文件出发，沿链接关系向外扩展。不在引用链上的文件会自动隐藏。
 
-```markdown
-# 被 mindx 标记为 external_link
-[→](../other-project/MEMORY.md)
+```text
+MEMORY.md
+  docs/tools.md
+    docs/tools/full.md
+  projects/index.md
+    projects/demo.md
+
+diary/2026-05-01.md 没有关联时不会显示
 ```
 
-### 引用模式（按引用显示）
+## 项目结构
 
-在设置弹窗中切换到「按引用显示」模式后，mindx 从指定的根文件（如 `MEMORY.md`）出发，沿 `[→](path)` 出边 BFS 扩展，**不在引用链上的文件自动隐藏**。
-
+```text
+mindx/
+├── server.py                 # Flask 主服务、SocketIO、Web API
+├── mcp_server.py             # MCP 服务器入口
+├── parser.py                 # Markdown 链接解析
+├── graph_engine.py           # 依赖图、断链检测、外部文件挂载
+├── watcher.py                # 文件监听和项目切换
+├── config.py                 # 配置读取和全局常量
+├── config.yaml               # 用户项目配置，运行后生成
+├── requirements.txt          # Web UI Python 依赖
+├── requirements-mcp.txt      # MCP 服务器依赖
+├── package.json              # 前端测试依赖和脚本
+├── jest.config.js            # Jest 测试配置
+├── .gitignore                # Git 忽略规则
+├── templates/
+│   └── index.html            # 前端入口
+├── static/
+│   ├── css/style.css         # 界面样式
+│   └── js/app.js             # 前端交互逻辑
+├── tests/                    # Python 和前端测试
+├── README.md                 # 项目说明
+├── DEVELOPMENT.md            # 开发记录和版本说明
+├── start-mindx.ps1           # Windows 后台启动脚本
+└── stop-mindx.ps1            # Windows 停止脚本
 ```
-MEMORY.md ─→ tools/claude-code.md ─→ tools/full/claude-code.md
-          ─→ tools/opencode.md
-          ─→ projects/_index.md ─→ aviation/overview.md
 
-diary/2026-05-01.md   ← 无入边也无出边，引用模式下不显示
+## 测试
+
+```bash
+python -m pytest tests/ -q    # 103 个 Python 测试
+npm test                        # 65 个前端 JS 测试
 ```
 
 ## License
