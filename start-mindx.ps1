@@ -17,12 +17,12 @@ if (-not $depsOk) { exit 1 }
 $mcpOk = $true
 try { python -c "import mcp" 2>$null } catch { Write-Host "[i] MCP 未安装（可选），如需 AI 集成请运行: pip install -r requirements-mcp.txt"; $mcpOk = $false }
 
-# 检查是否已在运行（通过端口占用）
-$conn = Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue
+# 检查是否已在运行（通过端口占用，排除 TIME_WAIT）
+$conn = Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue | Where-Object { $_.State -ne 'TimeWait' }
 if ($conn) {
     Write-Host "mindx 已在运行 (PID: $($conn.OwningProcess))"
     Write-Host "Web UI : http://127.0.0.1:$port"
-    if ($mcpOk) { Write-Host "MCP    : python $serverDir\mcp_server.py" }
+    if ($mcpOk) { Write-Host "MCP    : python $scriptDir\mcp_server.py" }
     exit 0
 }
 
@@ -34,14 +34,14 @@ if (Test-Path $pycache) {
 
 # 启动 Web 服务
 Start-Process python -ArgumentList "`"$serverPath`"" -WindowStyle Hidden
-Start-Sleep -Seconds 3
+Start-Sleep -Seconds 5
 
 # 验证
 try {
     $r = Invoke-WebRequest -Uri "http://127.0.0.1:$port/api/status" -UseBasicParsing -TimeoutSec 5
     Write-Host "mindx 已启动"
     Write-Host "Web UI : http://127.0.0.1:$port"
-    if ($mcpOk) { Write-Host "MCP    : python $serverDir\mcp_server.py" }
+    if ($mcpOk) { Write-Host "MCP    : python $scriptDir\mcp_server.py" }
 } catch {
     Write-Host "mindx 启动中，请稍后刷新 http://127.0.0.1:$port"
 }
