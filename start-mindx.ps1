@@ -34,7 +34,7 @@ if (Test-Path $pycache) {
 
 # 启动 Web 服务
 Start-Process python -ArgumentList "`"$serverPath`"" -WindowStyle Hidden
-Start-Sleep -Seconds 5
+Start-Sleep -Seconds 10
 
 # 验证
 try {
