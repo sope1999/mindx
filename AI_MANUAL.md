@@ -1,7 +1,7 @@
-# mindx v4.4–4.5 — AI-Readable Project Manual
+# mindx v4.5 — AI-Readable Project Manual
 
 > This document is the single source of truth for AI agents working on mindx.
-> Last verified against source: 2026-05-19.
+> Last verified against source: 2026-05-22.
 
 ## Contents
 
@@ -69,9 +69,11 @@ projects:
 | `parser.py` | 185 | Markdown link extraction, file classification | `parse_file()`, `resolve_link_target()`, `extract_md_links()`, `strip_root()`, `Link`, `FileInfo` |
 | `watcher.py` | 133 | watchdog observer wrapper with debounce | `FileWatcher(project_root, on_change)`, `MindxEventHandler`, `start()`, `stop()`, `restart()`, `_should_ignore()`, `_should_track()`, `_debounce_check()` |
 | `config.py` | 199 | config.yaml management, constants | `load_config()`, `save_config()`, `add_project()`, `remove_project()`, `get_project_config()`, `FILE_TYPES`, `SYNC_RULES`, `IGNORE_PATTERNS`, `HOST`, `PORT` |
+| `mcp_server.py` | 250 | MCP stdio server with HTTP proxy to Flask | 13 MCP tools for project status, graph, files, backlinks, broken links, history, scan, and sync checks |
 | `templates/index.html` | 291 | Single-page app HTML | Project tabs, file tree panel, 4 tab panels (ref-tree/dir-tree/dep-graph/detail), settings modal, confirm/error modals, folder-picker input |
 | `static/css/style.css` | 949 | Dark theme CSS | `:root` CSS variables, `[data-theme="light"]` override, component styles for tree, graphs, detail panel, modals, feeds |
 | `static/js/app.js` | 553 | All frontend logic | Global `S` state object, ~60 functions (see §5) |
+| `tests/` | n/a | Python and JS regression tests | `test_parser.py`, `test_graph_engine.py`, `test_server.py`, `test_mcp_server.py`, `app.test.js` |
 
 **Supporting files:**
 
@@ -79,6 +81,9 @@ projects:
 |------|---------|
 | `config.yaml` | Runtime config (auto-generated on first run) |
 | `requirements.txt` | Python dependencies |
+| `requirements-mcp.txt` | MCP server dependencies: `mcp`, `requests` |
+| `package.json` / `jest.config.js` | JavaScript test infrastructure for Jest |
+| `.gitignore` | Ignores `node_modules`, `__pycache__`, `.pytest_cache`, and other generated files |
 | `start-mindx.ps1` / `stop-mindx.ps1` | PowerShell start/stop scripts |
 
 ---
@@ -119,19 +124,28 @@ GET  /api/file/<path:file_path>
   → {path, type, exists, abs_path, size, last_modified,
      links: [{target, anchor, context}],
      dependencies: {path, references: [{path, type, link_type}],
-                    referenced_by: [{path, type, link_type}]},
+                     referenced_by: [{path, type, link_type}]},
      issues: [{type: "broken_link", target, detail}]}
+
+GET  /api/file/<path:file_path>/backlinks
+  → {path: str, backlinks: [{path, type, link_type}]}
+
+GET  /api/broken-links
+  → [{source, target, context, reason}]
 
 GET  /api/graph
   → {nodes: [{id, label, group, is_external, mounted, title}],
      edges: [{from, to, label, title, is_external}]}
 
 GET  /api/scan
-  → triggers full re-scan of active project
+  → triggers full re-scan of active project and calls _load_externals()
   → {total_files, total_edges, total_nodes_graph, file_types, recent_changes}
 
 GET  /api/changes?limit=N
   → [{timestamp, file, event, suggestion_count}]  (most recent first)
+
+GET  /api/history?days=3&type=all|changes|sync
+  → persisted event history from .mindx/history.json, filtered by age and type
 
 GET  /api/sync-check
   → [{changed_file, target, reason, action, severity}]
@@ -190,6 +204,18 @@ POST /api/file/rename-execute
 
 ## 4. Data Flow
 
+### Threading model
+
+```
+Three concurrent paths can touch project state:
+  1. Flask request handlers
+  2. watchdog observer callbacks
+  3. external file polling thread
+
+GraphEngine owns a threading.Lock(). All public methods lock before reading or
+writing engine.files or engine.graph. Do not bypass public methods for graph data.
+```
+
 ### Main scan pipeline
 
 ```
@@ -221,6 +247,8 @@ Background: _poll_external_files() runs every 30s
   → If exists/mtime changed → emit SocketIO "external_changed"
 ```
 
+`/api/scan` runs `scan_all()` and then `_load_externals()` so mounted external files come back after a full rescan.
+
 ### Sync suggestion flow
 
 ```
@@ -239,8 +267,16 @@ File change event (watcher)
 ### Settings flow
 
 ```
-Frontend save → POST /api/settings/save → config.yaml (per-project keys)
+Frontend save → POST /api/settings/save → config.yaml (per-project keys, atomic tmp + os.replace)
 Frontend load → GET /api/settings/load → _settingsCache → lsSet('settings', cache)
+```
+
+### History flow
+
+```
+Change and sync events → append to in-memory history
+  → persist to .mindx/history.json with atomic tmp + os.replace
+  → GET /api/history?days=3&type=all|changes|sync
 ```
 
 ### Positions flow
@@ -318,11 +354,13 @@ S = {
 
 **UI:**
 - `showSettings()` / `hideSettings()` — toggle settings modal
+- `toggleHistoryPanel(type)` — right-panel history buttons for real-time events and sync suggestions
 - `showCtxMenu(e, path)` — context menu for file
 - `showRenameDialog(path)` — rename file with preview/confirm, calls /api/file/rename-preview + /api/file/rename-execute
 - `showModal(title, content, buttons)` — generic modal
 - `showToast(msg)` — timed toast notification
 - `renderProjectTabs()` — renders project tab bar + dropdown
+- `rescanProject()` — calls real `/api/scan`, shows loading state, then refreshes files and graph
 
 **Filter/Select:**
 - `onFilterChange(e)` — syncs all filter checkboxes, calls renderAll()
@@ -384,6 +422,13 @@ On project_switched event:
   → handleProjectSwitched() → update S state → loadSettings() → renderAll()
 ```
 
+### Current UI notes
+
+- The old 5th tab was removed. History now lives behind toggle buttons in the right panel.
+- The `📋` buttons on the 实时事件 and 同步建议 headers show their history panels.
+- The rescan button now calls the backend `scan_all()` path through `/api/scan` and shows loading while it runs.
+- `tests/app.test.js` contains 65 Jest tests covering frontend behavior.
+
 ---
 
 ## 6. Modification Guide
@@ -391,11 +436,12 @@ On project_switched event:
 ### Adding a backend API endpoint
 
 1. Add the route function to `server.py` **before** the `# Startup` section (around line 536)
-2. Access current project: `active_project` (global string), `engines.get(active_project)` for engine
+2. Access current project through `_project_lock`; then use `engines.get(active_project)` for engine
 3. Access config: `get_project_config(_config, active_project)`
 4. Return `jsonify({...})`
 5. For POST: `data = request.get_json(force=True)`
 6. For SocketIO push: `socketio.emit("event_name", payload)`
+7. Use GraphEngine public methods only. They hold the engine lock.
 
 ### Adding a frontend feature
 
@@ -444,6 +490,22 @@ On project_switched event:
 2. To add new extensions: modify `_should_track()` in `watcher.py` AND `rglob("*.md")` in `graph_engine.scan_all()` AND `/api/external/add` handler
 3. Also update `extract_md_links()` in `parser.py` if new link formats are needed
 
+### Renaming files
+
+1. `/api/file/rename-preview` computes link edits before any write.
+2. `/api/file/rename-execute` must call `update_file()` after filesystem changes.
+3. Do not manually splice `engine.graph` nodes or mutate `engine.files` directly.
+
+### Restarting watchers
+
+1. A watchdog observer cannot restart after `stop()`.
+2. Recreate the observer and event handler instead of calling `start()` on a stopped observer.
+
+### Persisting config and history
+
+1. `config.yaml` writes are atomic: write tmp file, then `os.replace()`.
+2. `.mindx/history.json` is per project, uses atomic writes, and keeps 3 days by default.
+
 ---
 
 ## 7. Gotchas & Conventions
@@ -473,10 +535,17 @@ On project_switched event:
 - **Reference tree graph** uses hierarchical layout on first render, destroys and recreates with free-form physics after 1.5s. On subsequent renders, starts free-form directly.
 - **`onFilterChange`** is the single handler for ALL filter checkboxes across all tabs. It reads `e.target.id` to determine which filter changed.
 - **vis-network 4.21 auto group colors**: Do NOT set node `group` properties when per-node dark colors are desired. vis-network auto-assigns light default group colors to unknown groups and can override `color.background`; the fix removed `group` from `renderMemoryRefTree`, `renderMemoryDirTree`, and `renderDepGraph` nodes.
-- **Graph click tree highlight**: `selectFile()` does NOT update the file tree DOM. Graph click handlers call `highlightInTree(path)` separately to set tree selection highlighting and scroll the matched item into view.
+- **Graph click tree highlight**: `highlightInTree(path)` uses `CSS.escape(path)` and `scrollIntoView`; keep both when changing tree selection.
+- **Rescan button**: It now truly rescans through `/api/scan`, not page reload. Keep the loading state visible until refresh completes.
 
 ### Server specifics
 
+- **Thread safety**: Always use GraphEngine public methods. Do not access `engine.files` or `engine.graph` without its lock.
+- **Rename-execute**: Uses `update_file()` as the canonical entry point. Do not manually splice graph nodes.
+- **History files**: `.mindx/history.json` is per project, written atomically, with 3-day retention by default.
+- **Parser edge cases**: Files over 50MB are skipped. Link titles like `[text](url "title")` are stripped. UNC paths are external.
+- **Watchdog feedback loop**: Server writes are protected by `_server_writing`. Do not remove it without another loop guard.
+- **Project switch lock**: `_project_lock` protects `active_project` assignment. Do not bypass it.
 - **Server-side constants** in `config.py`: `FILE_TYPES` (classification mapping by path), `SYNC_RULES` (trigger rules), `IGNORE_PATTERNS` (scanner/watcher skip patterns)
 - **External file polling** runs in a daemon thread every 30 seconds (`POLL_INTERVAL = 30`)
 - **Change log is capped** at 200 entries (`_max_changes = 200`)
@@ -486,6 +555,7 @@ On project_switched event:
 ### Config persistence
 
 - **Config saved immediately** on any mutation — add_project, remove_project, settings save, positions save, external add/remove
+- **Config writes are atomic**: save to a tmp file first, then replace with `os.replace()`.
 - **External paths are normalized** to absolute with forward slashes before persisting to config.yaml
 - **Settings are cached** in `_settingsCache` (JS memory) and localStorage as fallback. Server is the source of truth on startup.
 
