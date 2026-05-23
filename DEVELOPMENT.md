@@ -594,22 +594,24 @@ AI 工具 ←─stdio─→ mcp_server.py ←─HTTP─→ server.py:5020
 
 | # | 版本 | 现象 | 根因 | 修复 |
 |---|------|------|------|------|
-| 12 | v4.5 | 重命名文件后不在文件列表中，重新扫描也不出现 | `cef117c` 手动拼图逻辑与 watchdog `update_file()` 竞态，缺 `else` 分支导致旧文件不在图中时新文件永不注册 | 改回 `update_file()` 统一入口（`66c6c77`） |
-| 13 | v4.5 | "重新扫描"按钮只刷新页面，不扫描磁盘 | `btn-rescan` 绑定 `location.reload()`，从未调用 `/api/scan` | 改为异步调 `/api/scan` + `_load_externals()` + loading（`0895ac7`） |
-| 14 | v4.5 | `_build_edges` 边目标路径不一致，孤立节点 | `parse_file` 返回规范化路径可能与 link target 不一致 | 统一使用 parse 返回的路径（`e86ff21`） |
-| 15 | v4.5 | `history.json` 进程崩溃时损坏 | 直接写文件，无原子保护 | 改为 tmp 文件 + `os.replace` 原子写入（`e86ff21`） |
-| 16 | v4.5 | history 损坏后静默丢失 | JSON 解析异常被吞 | 加 try/except + print 警告（`e86ff21`） |
-| 17 | v4.5 | SocketIO 重连时 `initAll()` 并发竞争 | 连接事件未防重入 | 加 `_initAllRunning` 守卫（`e86ff21`） |
-| 18 | v4.5 | 拖拽选框监听器常驻 | `mousemove`/`mouseup` 永不移除 | 切换选择模式时清理监听器（`e86ff21`） |
-| 19 | v4.5 | MCP `get_file_content` 无文件大小限制 | 大文件可导致进程内存爆炸 | 加 10 MB 上限检查（`e86ff21`） |
-| 21 | v4.5 | 项目切换时竞态条件 | `active_project` 赋值与引擎访问无临界区保护 | 加 `_project_lock` 保护切换逻辑（`bca378a`） |
-| 22 | v4.5 | 超大文件解析 OOM | `read_text()` 全量读入内存 | 加 50 MB 上限检查（`bca378a`） |
-| 23 | v4.5 | 二进制文件编码异常静默 | `except Exception` 吞 UnicodeDecodeError | 细化为 `UnicodeDecodeError` + 通用异常（`bca378a`） |
-| 24 | v4.5 | 链接标题 `[text](url "title")` 误解析 | title 被当作路径一部分 | 提取后剥离 title（`bca378a`） |
-| 25 | v4.5 | 文件观察者 stop 后无法重启 | 线程死后 `start()` 报错 | 重建 observer（`bca378a`） |
-| 26 | v4.5 | config.yaml 崩溃时损坏 | 直接覆盖写，无原子保护 | 改为 tmp + `os.replace`（`bca378a`） |
-| 27 | v4.5 | UNC 路径被误当相对路径 | `resolve_link_target` 未检测 UNC | 加 `//`/`\\\\` 前缀检测（`bca378a`） |
-| 28 | v4.5 | 重复忽略模式 | `__pycache__` 与 `*.pyc` 冗余 | 移除 `__pycache__`（`bca378a`） |
-| 29 | v4.5 | 服务写文件触发 watchdog 反馈环 | 自身文件修改被 watchdog 重复解析 | 加 `_server_writing` 标志跳过（`bca378a`） |
+| 1-11 | v4.4 | （见 v4.4 章节） | — | — |
+| 12 | v4.5 | 重命名文件后不在文件列表中 | `cef117c` 手动拼图与 watchdog 竞态 | 改回 `update_file()`（`66c6c77`） |
+| 13 | v4.5 | "重新扫描"不扫描磁盘 | `location.reload()` 未调 `/api/scan` | 改为真扫描 + loading（`0895ac7`） |
+| 14 | v4.5 | 边目标路径不一致 | `parse_file` 路径与 link target 不同 | 统一用 parse 返回路径（`e86ff21`） |
+| 15 | v4.5 | history.json 崩溃损坏 | 直接写无原子保护 | tmp + `os.replace`（`e86ff21`） |
+| 16 | v4.5 | history 损坏静默丢失 | JSON 异常被吞 | 加警告（`e86ff21`） |
+| 17 | v4.5 | SocketIO 重连并发 | 连接事件未防重入 | `_initAllRunning` 守卫（`e86ff21`） |
+| 18 | v4.5 | 拖拽监听常驻 | 永不移除 | 切换模式清理（`e86ff21`） |
+| 19 | v4.5 | MCP 无文件大小限制 | 大文件 OOM | 10 MB 上限（`e86ff21`） |
+| 20 | v4.5 | 三线程零锁并发 | `engine.files/graph` 无锁保护 | 加 `threading.Lock`（`a0ad63b`） |
+| 21 | v4.5 | 项目切换竞态 | `active_project` 无临界区 | `_project_lock`（`bca378a`） |
+| 22 | v4.5 | 大文件 OOM | `read_text` 全量 | 50 MB 上限（`bca378a`） |
+| 23 | v4.5 | 编码异常静默 | `except Exception` 过宽 | 细分异常（`bca378a`） |
+| 24 | v4.5 | 链接标题误解析 | title 当路径 | 剥离 title（`bca378a`） |
+| 25 | v4.5 | 观察者无法重启 | 线程死 | 重建 observer（`bca378a`） |
+| 26 | v4.5 | config 崩溃损坏 | 无原子写 | tmp + `os.replace`（`bca378a`） |
+| 27 | v4.5 | UNC 路径误判 | 未检测 | 前缀检测（`bca378a`） |
+| 28 | v4.5 | 重复忽略模式 | 冗余 | 移除（`bca378a`） |
+| 29 | v4.5 | watchdog 反馈环 | 自写文件触发 | `_server_writing` 标志（`bca378a`） |
 
 （v4.5 完）
