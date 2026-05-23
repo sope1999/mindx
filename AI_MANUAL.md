@@ -230,8 +230,63 @@ Project folder (.md files)
   → /api/graph → frontend S.graphData
   → buildRefTree() → addDirGroups() → renderFileTree()
   → renderMemoryRefTree() / renderMemoryDirTree() → vis.js Network
-  → renderDepGraph() → vis.js force-directed Network
+   → renderDepGraph() → vis.js force-directed Network
 ```
+
+### Markdown 引用规范 — AI 编写指南
+
+> **目的**：确保 AI agent（OpenClaw 等）在管理 .md 文件时使用 mindx 能正确识别的引用格式，以便依赖图准确反映文件关系。
+
+**识别规则**：
+
+mindx 使用正则 `\[([^\]]*?)\]\(([^)]+)\)` 提取链接。实际匹配规则：
+
+| 格式 | 识别 | 说明 |
+|------|:---:|------|
+| `[文本](相对路径.md)` | ✅ | **唯一标准格式** |
+| `[文本](子目录/文件.md)` | ✅ | 子目录相对路径 |
+| `[文本](../上级/文件.md)` | ✅ | 上级目录相对路径 |
+| `[文本](文件.md#锚点)` | ✅ | 锚点自动剥离 |
+| `[文本](文件.md "标题")` | ✅ | 链接标题自动剥离 |
+| `- [文本](文件.md)` | ✅ | 列表项中的链接 |
+| 表格内的 `[文本](path)` | ✅ | 表格单元格引用 |
+| `![图片](path.png)` | ❌ | 图片链接被排除 |
+| `[文本](https://网址)` | ❌ | HTTP/HTTPS 不进入依赖图 |
+| `[文本](C:\绝对\路径.md)` | ❌ | 绝对路径标记为外部 |
+| `[文本](//server/share/file)` | ❌ | UNC 路径标记为外部 |
+| `[文本](file.md)` 纯文件名 | ⚠️ | 需文件在同一目录 |
+
+**路径规则**：
+
+1. **必须用相对路径** — 从当前文件所在目录出发，指向项目内的另一个 .md 文件
+2. **必须用正斜杠** `/` — 即使 Windows 上也要用正斜杠，mindx 会自动标准化
+3. **文件名区分大小写** — `TOOLS.md` ≠ `tools.md`
+4. **空格** — 可以有，但 `<` `>` `"` `|` `?` `*` 应避免
+5. **目标文件必须存在** — 否则被标记为断链（broken link）
+
+**AI 编写最佳实践**：
+
+```
+# 正确 ✅
+- 工具配置见 [TOOLS.md](TOOLS.md)
+- 开发记录在 [dev-sessions.md](memory/projects/aviation/dev-sessions.md)
+- 规则说明见 [工作规则](../项目开发工作规则.md)
+
+# 错误 ❌  
+- [TOOLS](C:\SOFT\AI\coder\TOOLS.md)   ← 绝对路径
+- [github](https://github.com/xxx)      ← 外部链接（不进入图但可用）
+- ![截图](shot.png)                     ← 图片链接
+- [TOOLS](.\TOOLS.md)                   ← 反斜杠
+```
+
+**文件分类影响**：
+
+mindx 会根据引用关系自动给文件分类（core/base/standalone/external/hidden）。文件必须在图中才能被看到。如果新文件没有被任何其他文件引用（也没有引用其他文件），它会被分为 `standalone` 并在默认视图可见。
+
+**IGNORE_PATTERNS**：以下路径的文件会被忽略，不进入图：
+`.git/`, `*.pyc`, `__pycache__/`, `temp/*`, `temp_docs/*`, `docs/*`, `warning/*`, `node_modules/`
+
+---
 
 ### External file flow
 
