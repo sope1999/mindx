@@ -118,6 +118,7 @@ C:\SOFT\AI\mindx\
 - 新增 AI 规则 #10：禁止 `bash` 启动长驻进程，改用 `Start-Process -WindowStyle Hidden`
 - 修复：重命名文件后图状态不一致——`cef117c` 的手动拼图逻辑与 watchdog 存在竞态条件，且缺 `else` 分支；改回 `update_file()` 统一入口（`server.py` 第 767-776 行）
 - 修复：重新扫描按钮只做页面刷新而非真正磁盘扫描；改为异步调 `/api/scan` + `_load_externals()` + loading 状态 + 扫描完成提示
+- 深度 bug 探索：发现并修复 29 个 bug，涉及线程安全（`threading.Lock` 保护 engine 读写）、原子写入（tmp+replace）、竞态条件（重连防重入、项目切换锁）、解析健壮性（大文件/编码/链接标题/UNC）、观察者生命周期、watchdog 反馈环等
 
 ### v4.3（2026-05-17）
 - 设置持久化迁移至 config.yaml（分类覆写、排除目录、显示模式）
