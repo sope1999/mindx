@@ -316,7 +316,7 @@ Markdown 链接 `[→](path)` 被 parser 自动解析。纯文本引用通过 `i
 新：config.yaml (配置驱动) → engines{} 字典 → watchers{} 字典 → per-project 管理
 ```
 
-> 最后更新：2026-05-22 | 当前版本：v4.5
+> 最后更新：2026-05-24 | 当前版本：v4.6
 
 ---
 
@@ -562,13 +562,13 @@ AI 工具 ←─stdio─→ mcp_server.py ←─HTTP─→ server.py:5020
                 config.yaml（启动时读取）
 ```
 
-- **新增文件**：`mcp_server.py`（423 行）
+- **新增文件**：`mcp_server.py`（530 行）
 - **新增依赖**：`requirements-mcp.txt`（mcp>=1.0.0, requests>=2.28.0）
 - **server.py 补充**：
   - `GET /api/file/<path>/backlinks` — 文件入链查询
   - `GET /api/broken-links` — 全项目断链汇总
 
-### 13 个 MCP 工具
+### 16 个 MCP 工具
 
 | 分类 | 工具 | 实现 |
 |------|------|------|
@@ -577,6 +577,7 @@ AI 工具 ←─stdio─→ mcp_server.py ←─HTTP─→ server.py:5020
 | 引用关系 | `get_references`, `get_backlinks`, `get_dependency_graph` | HTTP 调 Flask |
 | 诊断维护 | `get_broken_links`, `get_sync_suggestions`, `get_change_log` | HTTP 调 Flask |
 | 文件操作 | `rename_file` | 两步 HTTP（preview → execute），原子更新引用 |
+| 断链静默 | `list_silenced_links`, `silence_link`, `unsilence_link` | HTTP 调 Flask |
 
 ### 状态管理
 
@@ -650,3 +651,24 @@ AI 工具 ←─stdio─→ mcp_server.py ←─HTTP─→ server.py:5020
 - 用户文档必须说明 `file:///` 只是链接语法
 - AI 手册必须说明 `external_paths` 的解析边界和可达性显示规则
 - 断链文档同时覆盖内部断链和外部断链
+
+### 启动脚本调整
+
+- `start-mindx.ps1` 启动后等待服务绑定 5020 端口，并请求 `/api/status` 验证 API 可用。
+- stdout 和 stderr 写入 `%TEMP%\mindx-startup.log`，启动失败时打印最近 20 行日志。
+- 如果 Python 进程未存活，脚本退出 1，避免假报“已启动”。
+- 如果端口被占用但 API 无响应，脚本保留日志路径，提示稍后刷新或检查日志。
+
+### v4.6 Bug 表
+
+| # | 版本 | 现象 | 根因 | 修复 |
+|---|------|------|------|------|
+| 30 | v4.6 | `/api/broken-links` 同一断链重复出现 | 外部递归解析和普通断链汇总同时记录同一 `(file, target)` | 按来源文件和目标去重后返回断链列表 |
+| 31 | v4.6 | 外部断链在详情面板缺少静默按钮 | 前端只给内部断链渲染静默操作 | 断链渲染统一读取外部状态，内部和外部断链都显示 🔈/🔇 |
+| 32 | v4.6 | broken 外部节点出现在引用树图、目录树图和依赖图 | 图视图未隔离 `external_status: broken` 节点 | 视觉视图过滤 broken 外部节点，断链只保留在诊断和详情中 |
+
+### v4.6 视觉与过滤修复
+
+- 图 Tab 新增“外部”过滤复选框，和文件树过滤状态保持同步。
+- 引用树里的外部节点使用虚线边框，和项目内节点区分。
+- broken 外部节点不再进入视觉视图，避免把不存在的文件画成可导航节点。
