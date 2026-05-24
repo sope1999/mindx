@@ -1,4 +1,4 @@
-# mindx 开发文档（v4.5）
+# mindx 开发文档（v4.6）
 
 > ⚠️ **AI 开发规则（不可跳过）：**
 >
@@ -60,29 +60,39 @@ C:\SOFT\AI\mindx\
 
 ## 核心模块说明（v4.0）
 
-### server.py（~430 行）
+### server.py（~1044 行）
 - 项目管理 API：`/api/projects`（列表）、`/api/projects/add`、`/api/projects/remove`、`/api/projects/select`
 - 数据 API：`/api/status`、`/api/files`、`/api/file/<path>`、`/api/graph`、`/api/scan`、`/api/changes`、`/api/sync-check`
+- 外部管理 API：`/api/external/add`、`/api/external/remove`、`/api/external/list`
+- 断链/静默 API：`/api/broken-links`、`/api/silenced-links`（+silence/unsilence）
+- 历史 API：`/api/history`
 - SocketIO 事件：`file_changed`、`sync_needed`、`project_switched`
 - 多引擎 + 多 watcher 字典管理，按项目名索引
+- `_init_project()` 创建引擎时传入 `external_paths`；`_persist_external`/`_unpersist_external` 同步引擎路径
 
-### config.py（~225 行）
+### config.py（~199 行）
 - `config.yaml` 读写：`load_config()`、`save_config()`
 - 项目管理：`add_project()`（含重名后缀处理）、`remove_project()`、`get_project_config()`
 - 全局常量：`FILE_TYPES`、`IGNORE_PATTERNS`、`SYNC_RULES`
 
-### parser.py（~210 行）
+### parser.py（~228 行）
 - `parse_file(abs_path, project_root)` → FileInfo
-- `resolve_link_target()` 返回 `(path, is_external)` 元组
-- 外部链接自动标记 `is_external=True`、`link_type="external_link"`
+- `normalize_file_uri()` — 将 `file:///C:/...` 转为本地绝对路径（含 `%20` 解码、anchor/title 剥离、UNC 保留）
+- `resolve_link_target()` 返回 `(path, is_external)` 元组，`file://` 链接自动标记 `is_external=True`
+- `Link.is_file_uri` 字段区分 `file://` 链接
+- `extract_md_links()` 不跳过 `file://`（只跳过 `http`）
 
-### graph_engine.py（~420 行）
-- `GraphEngine(project_root)` — 接受任意项目根目录
+### graph_engine.py（~735 行）
+- `GraphEngine(project_root, external_paths)` — 接受任意项目根目录 + 外部路径边界
+- `_is_within_external_paths()` — 判断绝对路径是否在挂载范围内
+- `_external_node_status()` — 返回 `(exists, mounted, status)` 三元组
+- `_build_edges()` / `update_file()` — 迭代队列递归解析被引用链触达的挂载外部 Markdown
 - `scan_all()` — 递归扫描所有 .md 文件，通用化（不依赖特定目录结构）
-- `get_graph_data()` — 返回 vis.js 格式数据，含 `is_external` 标记
-- `update_file()` / `_generate_suggestions()` — 增量更新 + 同步建议
+- `get_graph_data()` — 返回 vis.js 格式数据，含 `is_external`、`mounted`、`external_status` 等字段
+- `poll_external_files()` — 只轮询已挂载的外部文件，跳过未挂载和网络路径
+- `_is_network_path()` — 拒绝 UNC / `\\` / `file:////` 网络路径
 
-### watcher.py（~160 行）
+### watcher.py（~157 行）
 - `FileWatcher(project_root, on_change)` — 监听任意项目目录
 - `restart(new_root, new_callback)` — 切换监听目标
 
@@ -110,7 +120,7 @@ C:\SOFT\AI\mindx\
 
 ### v4.5（2026-05-22）— MCP 服务器
 - 新增 MCP 服务器 `mcp_server.py`：通过 stdio 协议为 AI 编程助手（Cursor/Claude Desktop）暴露 mindx 知识图谱查询能力
-- 13 个 MCP 工具：项目管理（list_projects/switch_project）、文件浏览（list_files/search_files/get_file_content/get_file_info）、引用关系（get_references/get_backlinks/get_dependency_graph）、诊断维护（get_broken_links/get_sync_suggestions/get_change_log）、文件操作（rename_file — 原子重命名+自动更新引用）
+- 16 个 MCP 工具：项目管理（list_projects/switch_project）、文件浏览（list_files/search_files/get_file_content/get_file_info）、引用关系（get_references/get_backlinks/get_dependency_graph）、诊断维护（get_broken_links/get_sync_suggestions/get_change_log）、文件操作（rename_file — 原子重命名+自动更新引用）、断链静默（list_silenced_links/silence_link/unsilence_link）
 - `server.py` 补充 2 个 API 路由：`/api/file/<path>/backlinks`（入链查询）和 `/api/broken-links`（全项目断链汇总）
 - MCP 服务器纯 HTTP 代理模式，不重复 mindx 内部逻辑，通过 config.yaml 共享项目配置
 - 依赖：`mcp`（Python MCP SDK）、`requests`（`requirements-mcp.txt`）
@@ -119,6 +129,19 @@ C:\SOFT\AI\mindx\
 - 修复：重命名文件后图状态不一致——`cef117c` 的手动拼图逻辑与 watchdog 存在竞态条件，且缺 `else` 分支；改回 `update_file()` 统一入口（`server.py` 第 767-776 行）
 - 修复：重新扫描按钮只做页面刷新而非真正磁盘扫描；改为异步调 `/api/scan` + `_load_externals()` + loading 状态 + 扫描完成提示
 - 深度 bug 探索：发现并修复 29 个 bug，涉及线程安全（`threading.Lock` 保护 engine 读写）、原子写入（tmp+replace）、竞态条件（重连防重入、项目切换锁）、解析健壮性（大文件/编码/链接标题/UNC）、观察者生命周期、watchdog 反馈环等
+
+### v4.6（2026-05-24）— file:/// 外部引用支持
+- 新增 `file:///` 本地文件链接支持：Markdown 中可写 `[文件](file:///C:/path/to/file.md)`，mindx 解析后作为外部引用加入图谱
+- `parser.py` 新增 `normalize_file_uri()`（Windows 盘符/pipe/Unix/UNC 规范化、`%20` 解码、`#anchor`/`"title"` 剥离）
+- `Link` 新增 `is_file_uri` 字段；`file://` 链接不被跳过（`http` 仍跳过）
+- 三种外部节点状态：**mounted**（在 `external_paths` 内，可解析递归建边）、**unmounted**（路径外但文件存在，叶子节点不解析）、**broken**（文件不存在，进入断链）
+- `GraphEngine` 新增 `external_paths` 参数、`_is_within_external_paths()`、`_external_node_status()`；`_build_edges`/`update_file` 改为迭代队列支持递归解析
+- 安全：UNC / `\\` / `file:////` 网络路径在所有层面被拒绝，`poll_external_files()` 只轮询已挂载文件
+- `/api/broken-links` 新增外部断链报告；`/api/file/<path>` 对外部节点回退到 graph node 数据
+- UI 外部标签区分三种状态：`挂`（mounted）/ `叶`（unmounted）/ `断`（broken）；挂载但未被引用的外部文件保持隐藏
+- MCP `get_file_info` 透传后端外部状态字段（`is_external`、`mounted`、`external_status`、`target_exists`、`broken`、`abs_path`）
+- MCP 工具总数 13→16（新增 `list_silenced_links`/`silence_link`/`unsilence_link`）
+- 测试：新增 57 个测试（parser 14 + graph 11 + server 3 + MCP 1 + JS 6），全量 134 passed
 
 ### v4.3（2026-05-17）
 - 设置持久化迁移至 config.yaml（分类覆写、排除目录、显示模式）
