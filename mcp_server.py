@@ -82,6 +82,20 @@ def _http_post(endpoint: str, data: dict) -> dict:
         return {"_error": f"请求失败: {e}"}
 
 
+def _copy_optional_fields(source: dict, target: dict, fields: tuple[str, ...]) -> None:
+    """Copy backend-provided fields without inventing values in MCP."""
+    for field in fields:
+        if field in source:
+            target[field] = source[field]
+
+
+def _dependency_count(dependencies: Any) -> int:
+    """Count backlinks from old list shape or current dependency dict shape."""
+    if isinstance(dependencies, dict):
+        return len(dependencies.get("referenced_by", []))
+    return len(dependencies or [])
+
+
 # ── Tool implementations ──────────────────────────────────────
 
 def tool_list_projects() -> dict:
@@ -177,7 +191,8 @@ def tool_get_file_info(path: str) -> dict:
     data = _http_get(f"/api/file/{path}")
     if "_error" in data:
         return data
-    # Clean up: return only the useful metadata fields
+    # Clean up: return useful metadata fields, plus optional external fields
+    # when the backend exposes them.
     result = {
         "path": data.get("path", path),
         "type": data.get("type"),
@@ -185,8 +200,22 @@ def tool_get_file_info(path: str) -> dict:
         "size": data.get("size"),
         "last_modified": data.get("last_modified"),
         "links_count": len(data.get("links", [])),
-        "backlinks_count": len(data.get("dependencies", [])),
+        "backlinks_count": _dependency_count(data.get("dependencies")),
     }
+    _copy_optional_fields(
+        data,
+        result,
+        (
+            "abs_path",
+            "is_external",
+            "mounted",
+            "external_status",
+            "external_state",
+            "target_exists",
+            "broken",
+            "issues",
+        ),
+    )
     return result
 
 
@@ -222,7 +251,7 @@ def tool_get_dependency_graph() -> dict:
 
 
 def tool_get_broken_links() -> dict:
-    """获取所有断开的内部链接"""
+    """获取所有断开的链接"""
     _ensure_project()
     data = _http_get("/api/broken-links")
     if "_error" in data:
@@ -384,7 +413,7 @@ async def main():
             ),
             Tool(
                 name="get_file_info",
-                description="获取文件元数据",
+                description="获取文件元数据；若后端提供，会包含外部引用挂载、未挂载或断链状态",
                 inputSchema={
                     "type": "object",
                     "properties": {"path": {"type": "string"}},
@@ -393,7 +422,7 @@ async def main():
             ),
             Tool(
                 name="get_references",
-                description="获取文件的出链（它引用了谁）",
+                description="获取文件的出链（它引用了谁）；若后端提供，会保留外部目标状态字段",
                 inputSchema={
                     "type": "object",
                     "properties": {"path": {"type": "string"}},
@@ -416,7 +445,7 @@ async def main():
             ),
             Tool(
                 name="get_broken_links",
-                description="获取所有断开的内部链接",
+                description="获取所有断开的链接，包含后端报告的内部或外部断链",
                 inputSchema={"type": "object", "properties": {}},
             ),
             Tool(

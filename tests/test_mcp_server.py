@@ -169,6 +169,34 @@ class TestGetFileInfo:
         assert result["backlinks_count"] == 1
         assert "extra_field" not in result
 
+    def test_get_file_info_preserves_backend_external_fields(self, with_project):
+        api_data = {
+            "path": "C:/shared/ext.md",
+            "type": "external",
+            "exists": True,
+            "size": 512,
+            "last_modified": "2025-01-02",
+            "links": [],
+            "dependencies": {"references": [], "referenced_by": [{"path": "a.md"}]},
+            "abs_path": "C:/shared/ext.md",
+            "is_external": True,
+            "mounted": False,
+            "external_status": "unmounted",
+            "target_exists": True,
+            "broken": False,
+            "extra_field": "ignored",
+        }
+        with patch.object(mcp_server, "_http_get", return_value=api_data):
+            result = mcp_server.tool_get_file_info("C:/shared/ext.md")
+
+        assert result["backlinks_count"] == 1
+        assert result["is_external"] is True
+        assert result["mounted"] is False
+        assert result["external_status"] == "unmounted"
+        assert result["target_exists"] is True
+        assert result["broken"] is False
+        assert "extra_field" not in result
+
     def test_get_file_info_http_error(self, with_project):
         with patch.object(mcp_server, "_http_get", return_value={"_error": "fail"}):
             result = mcp_server.tool_get_file_info("a.md")
