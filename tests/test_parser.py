@@ -302,3 +302,144 @@ class TestFileInfo:
         assert info.links == []
         assert info.backlinks == []
         assert info.last_modified is None
+
+
+# ---------------------------------------------------------------------------
+# normalize_file_uri
+# ---------------------------------------------------------------------------
+
+class TestNormalizeFileUri:
+    def test_windows_drive_letter(self):
+        """file:///C:/path/to/file.md → C:/path/to/file.md"""
+        from parser import normalize_file_uri
+        result = normalize_file_uri("file:///C:/path/to/file.md")
+        assert result == "C:/path/to/file.md"
+
+    def test_windows_drive_letter_pipe(self):
+        """file:///C|/path/to/file.md → C:/path/to/file.md"""
+        from parser import normalize_file_uri
+        result = normalize_file_uri("file:///C|/path/to/file.md")
+        assert result == "C:/path/to/file.md"
+
+    def test_windows_drive_lowercase(self):
+        """file:///d:/docs/note.md → D:/docs/note.md"""
+        from parser import normalize_file_uri
+        result = normalize_file_uri("file:///d:/docs/note.md")
+        assert result == "D:/docs/note.md"
+
+    def test_windows_root_only(self):
+        """file:///C:/ → C:/"""
+        from parser import normalize_file_uri
+        result = normalize_file_uri("file:///C:/")
+        assert result == "C:/"
+
+    def test_unix_absolute(self):
+        """file:///home/user/doc.md → /home/user/doc.md"""
+        from parser import normalize_file_uri
+        result = normalize_file_uri("file:///home/user/doc.md")
+        assert result == "/home/user/doc.md"
+
+    def test_not_file_uri(self):
+        """Non-file:// URI returns unchanged."""
+        from parser import normalize_file_uri
+        assert normalize_file_uri("https://example.com") == "https://example.com"
+        assert normalize_file_uri("relative/path.md") == "relative/path.md"
+
+    def test_empty_after_scheme(self):
+        """file:// with nothing after returns unchanged."""
+        from parser import normalize_file_uri
+        result = normalize_file_uri("file://")
+        assert result == "file://"
+
+
+# ---------------------------------------------------------------------------
+# resolve_link_target — file:/// URIs
+# ---------------------------------------------------------------------------
+
+class TestResolveLinkTargetFileUri:
+    def test_file_uri_is_external(self, project_root):
+        """file:/// links are always external."""
+        resolved, is_ext = resolve_link_target(
+            "MEMORY.md", "file:///C:/external/file.md", project_root
+        )
+        assert is_ext is True
+        assert resolved == "C:/external/file.md"
+
+    def test_file_uri_not_affected_by_project_root(self, project_root):
+        """file:/// link resolves to the local path, not relative to project_root."""
+        resolved, is_ext = resolve_link_target(
+            "MEMORY.md", "file:///tmp/shared.md", project_root
+        )
+        assert is_ext is True
+        assert resolved == "/tmp/shared.md"
+
+    def test_file_uri_with_spaces_encoded(self, project_root):
+        """file:/// links with encoded spaces are handled."""
+        resolved, is_ext = resolve_link_target(
+            "MEMORY.md", "file:///C:/my%20docs/note.md", project_root
+        )
+        assert is_ext is True
+        assert resolved == "C:/my docs/note.md"
+
+    def test_file_uri_anchor_is_stripped(self, project_root):
+        resolved, is_ext = resolve_link_target(
+            "MEMORY.md", "file:///C:/docs/note.md#section", project_root
+        )
+        assert is_ext is True
+        assert resolved == "C:/docs/note.md"
+
+    def test_file_uri_title_is_stripped(self, project_root):
+        resolved, is_ext = resolve_link_target(
+            "MEMORY.md", 'file:///C:/docs/note.md "title"', project_root
+        )
+        assert is_ext is True
+        assert resolved == "C:/docs/note.md"
+
+    def test_file_uri_unc_preserved(self, project_root):
+        """file:////server/share/path is preserved as-is."""
+        resolved, is_ext = resolve_link_target(
+            "MEMORY.md", "file:////server/share/path.md", project_root
+        )
+        assert is_ext is True
+        # UNC file:// URIs are preserved as-is
+        assert "file://" in resolved
+
+
+# ---------------------------------------------------------------------------
+# extract_md_links — file:/// links
+# ---------------------------------------------------------------------------
+
+class TestExtractMdLinksFileUri:
+    def test_file_uri_extracted(self, project_root):
+        """file:/// links are extracted (not skipped like http)."""
+        content = "[External](file:///C:/shared/docs.md)"
+        links = extract_md_links(content, "MEMORY.md", project_root)
+        assert len(links) == 1
+        assert links[0].is_external is True
+        assert links[0].is_file_uri is True
+        assert links[0].link_type == "external_link"
+
+    def test_file_uri_target_resolved(self, project_root):
+        """file:/// link target is normalized."""
+        content = "[Doc](file:///C:/Users/test/readme.md)"
+        links = extract_md_links(content, "MEMORY.md", project_root)
+        assert len(links) == 1
+        assert links[0].target == "C:/Users/test/readme.md"
+
+    def test_http_still_skipped(self, project_root):
+        """http:// links are still skipped."""
+        content = "[Web](https://example.com) and [Local](file:///C:/local.md)"
+        links = extract_md_links(content, "MEMORY.md", project_root)
+        assert len(links) == 1
+        assert links[0].is_file_uri is True
+        assert links[0].target == "C:/local.md"
+
+    def test_mixed_relative_and_file_uri(self, project_root):
+        """Relative and file:/// links coexist."""
+        content = "[Tools](TOOLS.md) and [Ext](file:///C:/ext/doc.md)"
+        links = extract_md_links(content, "MEMORY.md", project_root)
+        assert len(links) == 2
+        assert links[0].is_file_uri is False
+        assert links[0].link_type == "md_link"
+        assert links[1].is_file_uri is True
+        assert links[1].link_type == "external_link"

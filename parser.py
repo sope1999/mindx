@@ -5,6 +5,7 @@ from pathlib import Path
 from dataclasses import dataclass, field
 from typing import List, Optional
 from datetime import datetime
+from urllib.parse import unquote
 
 
 @dataclass
@@ -18,6 +19,7 @@ class Link:
     context: str             # surrounding context (table row, paragraph snippet)
     is_external: bool = False
     target_is_external: bool = False
+    is_file_uri: bool = False
 
 
 @dataclass
@@ -31,6 +33,46 @@ class FileInfo:
     last_modified: Optional[datetime] = None
     links: List[Link] = field(default_factory=list)       # outgoing
     backlinks: List[Link] = field(default_factory=list)   # incoming
+
+
+def normalize_file_uri(raw_target: str) -> str:
+    """Convert a file:// URI to a local absolute path.
+
+    Handles:
+      - file:///C:/path/to/file  (Windows drive letter)
+      - file:///C|/path/to/file  (old Windows pipe notation)
+      - file:///path/to/file     (Unix absolute path)
+      - file:////server/share    (UNC path via URI)
+      - file:///host/path        (non-localhost host: preserve as-is)
+
+    Returns the normalized absolute path with forward slashes, or the original
+    raw_target if it cannot be parsed as a file URI.
+    """
+    if not raw_target.startswith("file://"):
+        return raw_target
+
+    # Strip the scheme
+    rest = unquote(raw_target[7:])  # after "file://"
+
+    if not rest:
+        return raw_target
+
+    # file:////server/share/path → UNC path
+    if rest.startswith("/"):
+        # Check if it looks like a Windows drive: file:///C:/... or file:///C|/...
+        drive_match = re.match(r"^/([a-zA-Z])[:|](/.*)?$", rest)
+        if drive_match:
+            drive = drive_match.group(1).upper()
+            subpath = drive_match.group(2) or "/"
+            return f"{drive}:/{subpath.lstrip('/')}"
+        # Check if it's a UNC: file:////server/... (rest starts with //)
+        if rest.startswith("//"):
+            return raw_target  # preserve UNC-style
+        # Unix absolute path: file:///home/user/doc.md → /home/user/doc.md
+        return rest
+
+    # Bare file://path (unusual, treat as-is)
+    return raw_target
 
 
 def strip_root(abs_path: Path, root: Path) -> str:
@@ -52,12 +94,20 @@ def resolve_link_target(source_path: str, raw_target: str, project_root: Path) -
     if raw_target.startswith("//") or raw_target.startswith("\\\\"):
         return (raw_target, True)
 
-    # Remove anchor fragments (#section)
-    # Bug 24: Strip optional title ("title") before anchor removal
+    # Strip optional title and anchor fragments before URI/path resolution.
+    # Bug 24: Strip optional title ("title") before anchor removal.
     raw_target = re.sub(r'\s+"[^"]*"$', '', raw_target)
     raw_target = re.sub(r"#[^)]*$", "", raw_target)
     if not raw_target:
         return source_path, False
+
+    # file:/// URI — normalize to local absolute path, always external
+    if raw_target.startswith("file://"):
+        normalized = normalize_file_uri(raw_target)
+        if normalized != raw_target and not normalized.startswith("file://"):
+            return (normalized, True)
+        # If normalization returned the original, preserve it as external
+        return (raw_target, True)
 
     source_dir = (project_root / source_path).parent
     try:
@@ -69,7 +119,8 @@ def resolve_link_target(source_path: str, raw_target: str, project_root: Path) -
         except ValueError:
             is_external = True
         return strip_root(resolved, project_root), is_external
-    except Exception:
+    except Exception as exc:
+        print(f"[mindx] warning: link resolve failed for '{raw_target}' from '{source_path}': {exc}")
         return raw_target, False
 
 
@@ -83,6 +134,7 @@ def extract_md_links(content: str, source_path: str, project_root: Path) -> List
         raw_target = match.group(2).strip()
         if raw_target.startswith("http"):
             continue  # skip external URLs
+        is_file_uri = raw_target.startswith("file://")
         resolved, is_ext = resolve_link_target(source_path, raw_target, project_root)
         links.append(Link(
             source=source_path,
@@ -93,6 +145,7 @@ def extract_md_links(content: str, source_path: str, project_root: Path) -> List
             context=_get_context(content, match.start()),
             is_external=is_ext,
             target_is_external=is_ext,
+            is_file_uri=is_file_uri,
         ))
     return links
 
@@ -221,7 +274,8 @@ def parse_file(abs_path: Path, project_root: Path, file_types: Optional[dict] = 
         except UnicodeDecodeError:
             info.links = []
             return info
-        except Exception:
+        except Exception as exc:
+            print(f"[mindx] warning: could not read file '{abs_path}': {exc}")
             content = ""
         info.links = extract_md_links(content, rel_path, project_root)
 
