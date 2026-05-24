@@ -124,33 +124,12 @@ def resolve_link_target(source_path: str, raw_target: str, project_root: Path) -
         return raw_target, False
 
 
-def _strip_inline_code(content: str) -> str:
-    """Replace inline code spans with spaces so link regex won't match inside them.
-
-    Handles:
-      - Single backtick: `code`
-      - Double backtick: `` code with ` inside ``
-    """
-    result = content
-    # Handle double-backtick code spans first (may contain single backticks)
-    result = re.sub(r"``.+?``", lambda m: " " * len(m.group()), result)
-    # Handle single-backtick code spans
-    result = re.sub(r"`[^`]+`", lambda m: " " * len(m.group()), result)
-    return result
-
-
 def extract_md_links(content: str, source_path: str, project_root: Path) -> List[Link]:
-    """Extract all [text](path) markdown links from content.
-
-    Inline code spans (`` `...` ``) are skipped — links inside them
-    are documentation examples and should not create graph edges.
-    """
+    """Extract all [text](path) markdown links from content."""
     links = []
-    # Strip inline code spans before matching, preserving character positions
-    stripped = _strip_inline_code(content)
     # Match [text](path) — handle both [→](path) and [text](path)
     pattern = re.compile(r"\[([^\]]*?)\]\(([^)]+)\)")
-    for match in pattern.finditer(stripped):
+    for match in pattern.finditer(content):
         anchor = match.group(1).strip() or "→"
         raw_target = match.group(2).strip()
         if raw_target.startswith("http"):
