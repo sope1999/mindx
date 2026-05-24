@@ -169,6 +169,7 @@ function resetState() {
   S.reachableSet = new Set();
   S.historyMode = { changes: false, sync: false };
   S._dagReachable = null;
+  S._externalReachable = null;
   // Clear localStorage and settings cache
   localStorage.clear();
   // Reset the settings cache from app.js
@@ -550,7 +551,90 @@ describe('computeReachable', () => {
 });
 
 // ═══════════════════════════════════════════
-// 14. getFtypeLabel
+// 14. External reference display status
+// ═══════════════════════════════════════════
+describe('external reference display status', () => {
+  beforeEach(() => {
+    S.showExternal = true;
+  });
+
+  test('hides mounted external files that are not reached by a non-external reference chain', () => {
+    S.files = [{ path: 'C:/ext/unreached.md', type: 'external' }];
+    S.graphData = {
+      nodes: [
+        { id: 'MEMORY.md', is_external: false },
+        { id: 'C:/ext/unreached.md', is_external: true, mounted: true, exists: true },
+      ],
+      edges: [],
+    };
+
+    expect(getExternalStatus('C:/ext/unreached.md')).toBe('mounted');
+    expect(isFileVisible('C:/ext/unreached.md')).toBe(false);
+  });
+
+  test('shows mounted external files reached through the reference graph', () => {
+    S.files = [{ path: 'C:/ext/reached.md', type: 'external' }];
+    S.graphData = {
+      nodes: [
+        { id: 'MEMORY.md', is_external: false },
+        { id: 'C:/ext/reached.md', is_external: true, mounted: true, exists: true },
+      ],
+      edges: [{ from: 'MEMORY.md', to: 'C:/ext/reached.md' }],
+    };
+
+    expect(isFileVisible('C:/ext/reached.md')).toBe(true);
+  });
+
+  test('adds referenced unmounted external leaf nodes from graph data without requiring S.files entries', () => {
+    S.files = [{ path: 'MEMORY.md', type: 'root_index' }];
+    S.graphData = {
+      nodes: [
+        { id: 'MEMORY.md', is_external: false },
+        { id: 'C:/ext/leaf.md', is_external: true, mounted: false, exists: true, group: 'external' },
+      ],
+      edges: [{ from: 'MEMORY.md', to: 'C:/ext/leaf.md' }],
+    };
+
+    expect(getExternalStatus('C:/ext/leaf.md')).toBe('unmounted');
+    expect(getDisplayFiles().map(f => f.path)).toContain('C:/ext/leaf.md');
+    expect(isFileVisible('C:/ext/leaf.md')).toBe(true);
+  });
+
+  test('labels missing external references as broken leaves', () => {
+    S.files = [{ path: 'MEMORY.md', type: 'root_index' }];
+    S.graphData = {
+      nodes: [
+        { id: 'MEMORY.md', is_external: false },
+        { id: 'C:/ext/missing.md', is_external: true, mounted: false, exists: false, group: 'external' },
+      ],
+      edges: [{ from: 'MEMORY.md', to: 'C:/ext/missing.md' }],
+    };
+
+    expect(getExternalStatus('C:/ext/missing.md')).toBe('broken');
+    expect(isFileVisible('C:/ext/missing.md')).toBe(true);
+  });
+
+  test('does not misclassify explicit unmounted status as mounted', () => {
+    S.graphData = {
+      nodes: [{ id: 'C:/ext/leaf.md', is_external: true, mounted: false, exists: true, external_status: 'unmounted' }],
+      edges: [],
+    };
+
+    expect(getExternalStatus('C:/ext/leaf.md')).toBe('unmounted');
+  });
+
+  test('broken status takes precedence over mounted hints', () => {
+    S.graphData = {
+      nodes: [{ id: 'C:/ext/missing.md', is_external: true, mounted: true, exists: false, external_status: 'mounted' }],
+      edges: [],
+    };
+
+    expect(getExternalStatus('C:/ext/missing.md')).toBe('broken');
+  });
+});
+
+// ═══════════════════════════════════════════
+// 15. getFtypeLabel
 // ═══════════════════════════════════════════
 describe('getFtypeLabel', () => {
   test('returns Chinese label for root_index', () => {
@@ -563,7 +647,7 @@ describe('getFtypeLabel', () => {
 });
 
 // ═══════════════════════════════════════════
-// 15. bumpReadCount / getReadCount
+// 16. bumpReadCount / getReadCount
 // ═══════════════════════════════════════════
 describe('bumpReadCount / getReadCount', () => {
   test('bumps read count and returns incremented value', () => {
@@ -585,7 +669,7 @@ describe('bumpReadCount / getReadCount', () => {
 });
 
 // ═══════════════════════════════════════════
-// 16. buildRefTree
+// 17. buildRefTree
 // ═══════════════════════════════════════════
 describe('buildRefTree', () => {
   test('builds tree from graph edges', () => {

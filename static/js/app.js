@@ -67,6 +67,59 @@ function isExternalFile(p) { return getClassification(p) === 'external'; }
 function isCoreFile(p) { return getClassification(p) === 'core'; }
 function isHiddenFile(p) { return getClassification(p) === 'hidden'; }
 
+function getGraphNode(path) { return (S.graphData?.nodes || []).find(n => n.id === path); }
+function hasGraphEdges(path) { return (S.graphData?.edges || []).some(e => e.from === path || e.to === path); }
+function getExternalStatus(path) {
+  const node = getGraphNode(path);
+  if (!node || !node.is_external) return null;
+  const raw = String(node.external_status || node.status || '').toLowerCase();
+  if (node.exists === false || node.broken || raw === 'broken' || raw === 'missing') return 'broken';
+  if (node.mounted === true || raw === 'mounted') return 'mounted';
+  if (raw === 'unmounted') return 'unmounted';
+  return 'unmounted';
+}
+function getExternalStatusLabel(status) { return { mounted: '已挂载外部文件', unmounted: '未挂载外部引用叶子', broken: '外部引用缺失' }[status] || ''; }
+function isExternalReached(path) {
+  if (!S.graphData) return false;
+  if (!S._externalReachable) {
+    const nodesById = new Map((S.graphData.nodes || []).map(n => [n.id, n]));
+    const queue = (S.graphData.nodes || []).filter(n => !n.is_external).map(n => n.id);
+    const seen = new Set(queue);
+    S._externalReachable = new Set();
+    while (queue.length) {
+      const cur = queue.shift();
+      for (const e of (S.graphData.edges || [])) {
+        if (e.from !== cur || seen.has(e.to)) continue;
+        seen.add(e.to);
+        const target = nodesById.get(e.to);
+        if (target?.is_external) S._externalReachable.add(e.to);
+        queue.push(e.to);
+      }
+    }
+  }
+  return S._externalReachable.has(path);
+}
+function isExternalReferenceVisible(path) {
+  const status = getExternalStatus(path);
+  if (!status) return true;
+  if (status === 'mounted') return isExternalReached(path);
+  return hasGraphEdges(path);
+}
+function getDisplayFile(path) {
+  const file = S.files.find(f => f.path === path);
+  if (file) return file;
+  const node = getGraphNode(path);
+  if (!node?.is_external) return null;
+  return { path, type: node.group || node.type || 'external', exists: node.exists, size: node.size, last_modified: node.last_modified, link_count: 0, backlink_count: 0 };
+}
+function getDisplayFiles() {
+  const byPath = new Map(S.files.map(f => [f.path, f]));
+  for (const node of (S.graphData?.nodes || [])) {
+    if (node.is_external && !byPath.has(node.id)) byPath.set(node.id, getDisplayFile(node.id));
+  }
+  return [...byPath.values()].filter(Boolean);
+}
+
 function isFileVisible(path) {
   if (isExcluded(path)) return false;
   const cls = getClassification(path);
@@ -77,6 +130,7 @@ function isFileVisible(path) {
   if (cls === 'base' && !S.showBase) return false;
   if (cls === 'standalone' && !S.showStandalone) return false;
   if (cls === 'external' && !S.showExternal) return false;
+  if (cls === 'external' && !isExternalReferenceVisible(path)) return false;
   // In ref mode, external files must have reference relationships
   if (cls === 'external' && S.treeMode === 'ref' && S.graphData) {
     const hasEdges = (S.graphData.edges || []).some(e => e.from === path || e.to === path);
@@ -132,7 +186,7 @@ function filterRefNode(node,visiblePaths){const filtered=node.children.map(c=>fi
 // ── File tree ──
 function renderFileTree(){
   const filter=(document.getElementById('tree-filter').value||'').toLowerCase();
-  const visualFiles=S.files.filter(f=>isFileVisible(f.path)&&(!filter||f.path.toLowerCase().includes(filter)));
+  const visualFiles=getDisplayFiles().filter(f=>isFileVisible(f.path)&&(!filter||f.path.toLowerCase().includes(filter)));
   const c=document.getElementById('file-tree');c.innerHTML='';
   if(!S.graphData){c.innerHTML='<div class="empty-state small">加载中...</div>';return;}
   let refTree=buildRefTree(S.graphData);
@@ -156,9 +210,10 @@ function renderRefNode(container,node,depth){
     wrapper.appendChild(row);wrapper.appendChild(kc);container.appendChild(wrapper);
     node.children.forEach(c=>renderRefNode(kc,c,depth+1));return;
   }
-  const f=S.files.find(x=>x.path===node.path);const level=f?getMemoryLevel(node.path,f.type):null;const icon=f?getFileIcon(f.type):'📄';const name=baseName(node.path);const isStale=!!S.staleMap[node.path];const cls=getClassification(node.path);
+  const f=getDisplayFile(node.path);const level=f?getMemoryLevel(node.path,f.type):null;const icon=f?getFileIcon(f.type):'📄';const name=baseName(node.path);const isStale=!!S.staleMap[node.path];const cls=getClassification(node.path);const extStatus=getExternalStatus(node.path);
   row.className='tree-item'+(isStale?' stale-ref':'')+(node.hidden?' hidden-parent':'')+(cls==='hidden'?' cls-hidden':'')+' cls-'+cls;
   row.style.paddingLeft=(8+depth*14)+'px';row.dataset.path=node.path;
+  if(extStatus)row.title=getExternalStatusLabel(extStatus)+'\n'+node.path;
   if(cls==='external')row.style.opacity='0.6';
   if(S.selectMode&&!node.isGroup){const cb=document.createElement('input');cb.type='checkbox';cb.className='tree-cb';cb.dataset.path=node.path;cb.checked=S.selectedFiles.has(node.path);cb.addEventListener('click',e=>{e.stopPropagation();toggleFileSelect(node.path);});row.appendChild(cb);}
   const toggle=document.createElement('span');toggle.className='tree-toggle'+(hasKids?' expanded':' leaf');toggle.textContent='▶';row.appendChild(toggle);
@@ -167,7 +222,7 @@ function renderRefNode(container,node,depth){
   if(level){const b=document.createElement('span');b.className='level-badge '+level;b.textContent=level;row.appendChild(b);}
   if(cls==='base'){const eb=document.createElement('span');eb.className='level-badge cls-tail base';eb.textContent='基';row.appendChild(eb);}
   else if(cls==='standalone'){const eb=document.createElement('span');eb.className='level-badge cls-tail standalone';eb.textContent='独';row.appendChild(eb);}
-  else if(cls==='external'){const eb=document.createElement('span');eb.className='level-badge cls-tail external';eb.textContent='外';row.appendChild(eb);}
+  else if(cls==='external'){const eb=document.createElement('span');eb.className='level-badge cls-tail external '+(extStatus||'');eb.textContent=extStatus==='mounted'?'挂':(extStatus==='broken'?'断':'叶');eb.title=getExternalStatusLabel(extStatus)||'外部';row.appendChild(eb);}
   if(cls==='hidden'){const hb=document.createElement('span');hb.className='level-badge cls-tail hidden';hb.textContent='隐';row.appendChild(hb);row.style.opacity='0.45';}
   if(isStale){const sd=document.createElement('span');sd.className='stale-dot';sd.title='下级文件已更新，摘要可能过期';sd.style.display='inline-block';row.appendChild(sd);}
   row.addEventListener('click',e=>{if(e.target!==toggle||toggle.classList.contains('leaf'))selectFile(node.path);});
@@ -479,7 +534,7 @@ function computeRefLevels(graphData, visiblePaths) {
 
 function renderMemoryRefTree(container){
   const nodes=[],edges=[],nodeIds=new Set();
-  const visiblePaths=new Set(S.files.filter(f=>isVisibleInGraph(f.path)).map(f=>f.path));
+  const visiblePaths=new Set(getDisplayFiles().filter(f=>isVisibleInGraph(f.path)).map(f=>f.path));
   // Ref tree graph: exclude external files without reference relationships
   for (const p of visiblePaths) {
     if (isExternalFile(p) && S.graphData) {
@@ -496,7 +551,7 @@ function renderMemoryRefTree(container){
   const shift=-minLevel;
   
   // Create nodes with tree depth as hierarchical level
-  for(const f of S.files){
+  for(const f of getDisplayFiles()){
     if(!visiblePaths.has(f.path))continue;
     const d=(dagLevels[f.path]??0)+shift;
     nodes.push({
@@ -504,7 +559,7 @@ function renderMemoryRefTree(container){
       color:{background:getNodeColor(f.type,f.path),border:getNodeBorderColor(),highlight:{background:getNodeColor(f.type,f.path),border:'#fff'}},
       font:{color:getFontColor(),size:10,face:'monospace'},
       shape:'box',margin:5,
-      title:f.path+'\n'+getFtypeLabel(f.type),
+      title:f.path+'\n'+getFtypeLabel(f.type)+(getExternalStatus(f.path)?'\n'+getExternalStatusLabel(getExternalStatus(f.path)):''),
       level:d
     });
     nodeIds.add(f.path);
@@ -576,7 +631,7 @@ function saveDepPositions(){savePosition('dep_positions',S.netDepGraph);}
 
 function renderMemoryDirTree(container){
   const nodes=[],edges=[],nodeIds=new Set();
-  const visible=S.files.filter(f=>isVisibleInGraph(f.path));
+  const visible=getDisplayFiles().filter(f=>isVisibleInGraph(f.path));
   if(!visible.length)return;
   const dirMap={};
   function ensureDir(p){if(!dirMap[p]){const nm=p.slice(0,-1).split('/').pop();dirMap[p]={name:nm,subdirs:new Set(),files:[]};}}
@@ -600,13 +655,13 @@ function renderMemoryDirTree(container){
 // ── Dependency graph ──
 function renderDepGraph(){
   if(!S.graphData)return;const container=document.getElementById('dep-graph-container');
-  const visiblePaths=new Set(S.files.filter(f=>isVisibleInGraph(f.path)).map(f=>f.path));
+  const visiblePaths=new Set(getDisplayFiles().filter(f=>isVisibleInGraph(f.path)).map(f=>f.path));
   const gNodes=S.graphData.nodes.filter(n=>visiblePaths.has(n.id));
   let gEdges=S.graphData.edges.filter(e=>visiblePaths.has(e.from)&&visiblePaths.has(e.to)&&e.from!==e.to);
   const CLS=['base','standalone'];const clsCount={base:0,standalone:0},clsIndex={};
   for(const n of gNodes){const cls=getClassification(n.id);if(cls in clsCount){clsIndex[n.id]=clsCount[cls];clsCount[cls]++;}}
   const X_GAP=150,Y_TOP=-350,Y_GAP=120;
-  const nodesArr=gNodes.map(n=>{const base={id:n.id,label:baseName(n.id),title:n.title,color:{background:getNodeColor(n.group,n.id),border:getNodeBorderColor(),highlight:{background:getNodeColor(n.group,n.id),border:'#fff'}},font:{color:getFontColor(),size:11,face:'monospace'},shape:'box',margin:5};const cls=getClassification(n.id);if(cls in clsCount){const idx=CLS.indexOf(cls);base.x=(clsIndex[n.id]-(clsCount[cls]-1)/2)*X_GAP;base.y=Y_TOP+idx*Y_GAP;}if(n.is_external){base.shapeProperties={borderDashes:[5,5]};base.borderWidth=2;}return base;});
+  const nodesArr=gNodes.map(n=>{const status=getExternalStatus(n.id);const base={id:n.id,label:baseName(n.id),title:(n.title||n.id)+(status?'\n'+getExternalStatusLabel(status):''),color:{background:getNodeColor(n.group,n.id),border:getNodeBorderColor(),highlight:{background:getNodeColor(n.group,n.id),border:'#fff'}},font:{color:getFontColor(),size:11,face:'monospace'},shape:'box',margin:5};const cls=getClassification(n.id);if(cls in clsCount){const idx=CLS.indexOf(cls);base.x=(clsIndex[n.id]-(clsCount[cls]-1)/2)*X_GAP;base.y=Y_TOP+idx*Y_GAP;}if(n.is_external){base.shapeProperties={borderDashes:[5,5]};base.borderWidth=2;}return base;});
   const nodes=new vis.DataSet(nodesArr);const edgeSet=new Set(gEdges.map(e=>e.from+'|||'+e.to));
   const edgesArr=[];const seenBiDep=new Set();
   for(const e of gEdges){
@@ -651,14 +706,14 @@ async function unsilenceBrokenLink(target) {
   });
   return r.json();
 }
-async function fetchFileDetail(path){const [detail,silenced]=await Promise.all([fetch('/api/file/'+encodeURIComponent(path)).then(r=>r.json()),fetchSilencedBrokenLinks().catch(()=>[])]);detail.silenced_links=silenced||[];return detail;}
+async function fetchFileDetail(path){const [detail,silenced]=await Promise.all([fetch('/api/file/'+encodeURIComponent(path)).then(r=>r.json()),fetchSilencedBrokenLinks().catch(()=>[])]);const node=getGraphNode(path);if(node?.is_external){detail.type=detail.type||node.group||'external';if(detail.exists===undefined&&node.exists!==undefined)detail.exists=node.exists;detail.abs_path=detail.abs_path||node.abs_path||path;detail.external_status=getExternalStatus(path);detail.mounted=!!node.mounted;}detail.silenced_links=silenced||[];return detail;}
 async function toggleBrokenLinkSilence(target,silenced){const r=silenced?await unsilenceBrokenLink(target):await silenceBrokenLink(target);if(r.success&&S.selectedFile)fetchFileDetail(S.selectedFile).then(d=>renderDetail(d));}
 function escapeHtml(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 function renderDetail(data){
   document.getElementById('detail-empty').style.display='none';document.getElementById('detail-content').style.display='block';
   document.getElementById('detail-path').textContent=baseName(data.path);
   document.getElementById('detail-type-badge').textContent=getFtypeLabel(data.type||'');
-  let meta='';if(data.exists!==undefined)meta+='<span class="status-tag '+(data.exists?'exists':'missing')+'">'+(data.exists?'存在':'缺失')+'</span>';if(data.size)meta+='<span>'+Math.round(data.size/1024)+' KB</span>';if(data.last_modified)meta+='<span>'+new Date(data.last_modified).toLocaleString('zh-CN')+'</span>';document.getElementById('detail-meta').innerHTML=meta;
+  let meta='';if(data.exists!==undefined)meta+='<span class="status-tag '+(data.exists?'exists':'missing')+'">'+(data.exists?'存在':'缺失')+'</span>';if(data.external_status)meta+='<span class="status-tag external-status '+data.external_status+'">'+getExternalStatusLabel(data.external_status)+'</span>';if(data.size)meta+='<span>'+Math.round(data.size/1024)+' KB</span>';if(data.last_modified)meta+='<span>'+new Date(data.last_modified).toLocaleString('zh-CN')+'</span>';document.getElementById('detail-meta').innerHTML=meta;
   document.getElementById('detail-fullpath').textContent=data.abs_path||data.path;
   const parents=data.dependencies?.referenced_by||[];const children=data.dependencies?.references||[];
   document.getElementById('detail-parents').innerHTML=parents.length?parents.map(p=>'<div class="ref-link" onclick="selectFile(\''+p.path+'\')">'+baseName(p.path)+' <span class="ref-type">'+p.link_type+'</span></div>').join(''):'<span class="dim">无</span>';
@@ -705,7 +760,7 @@ async function initAll(){
   await fetchFiles();await fetchGraph();await loadPositionsFallback();renderAll();
 }
 async function fetchFiles(){S.files=await api('/api/files');computeStaleMap();applyAfterData();}
-async function fetchGraph(){S._dagReachable=null;S.graphData=await api('/api/graph');computeStaleMap();applyAfterData();}
+async function fetchGraph(){S._dagReachable=null;S._externalReachable=null;S.graphData=await api('/api/graph');computeStaleMap();applyAfterData();}
 async function toggleHistoryPanel(panelType) {
   const feedId = panelType === 'sync' ? 'suggestion-feed' : 'change-feed';
   const container = document.getElementById(feedId);

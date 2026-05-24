@@ -101,6 +101,7 @@ html, body {
 .btn-block { width: 100%; display: block; margin-top: 8px; }
 .btn-xs { padding: 1px 6px; font-size: 10px; border-radius: 3px; }
 .btn-xs.active { background: var(--accent2); border-color: var(--accent2); color: #fff; }
+.history-toggle { margin-left: auto; }
 
 /* ── Header actions / toolbar ──────────────────── */
 .header-actions {
@@ -322,6 +323,9 @@ html, body {
 .cls-tail.base { border-color: var(--orange); color: var(--orange); }
 .cls-tail.standalone { border-color: var(--yellow); color: var(--yellow); }
 .cls-tail.external { border-color: var(--text-dim); color: var(--text-dim); }
+.cls-tail.external.mounted { border-color: var(--accent); color: var(--accent); }
+.cls-tail.external.broken { border-color: var(--red); color: var(--red); }
+.cls-tail.external.unmounted { border-color: var(--yellow); color: var(--yellow); }
 
 /* ── Classification buttons ───────────────────── */
 .classify-bar { display: flex; gap: 4px; }
