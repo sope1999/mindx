@@ -193,3 +193,288 @@ class TestThreadSafety:
         eng = GraphEngine(project_root)
         assert hasattr(eng, "_lock")
         assert isinstance(eng._lock, type(threading.RLock()))
+
+
+# ── file:/// external references ─────────────────────────────
+
+class TestFileUriExternal:
+    """Tests for file:/// link handling with external_paths."""
+
+    def _make_ext_dir(self, tmp_path, with_links=True):
+        """Create a temp directory with a .md file, return (dir_path, file_path)."""
+        ext_dir = tmp_path / "external_lib"
+        ext_dir.mkdir()
+        doc = ext_dir / "readme.md"
+        if with_links:
+            doc.write_text("# External Doc\n\n[Tools](TOOLS.md)", encoding="utf-8")
+        else:
+            doc.write_text("# External Doc\n\nNo links here.", encoding="utf-8")
+        return ext_dir, doc
+
+    def test_file_uri_mounted_creates_parsed_node(self, project_root, tmp_path):
+        """file:/// target within external_paths → mounted node, parsed, edge added."""
+        ext_dir, doc = self._make_ext_dir(tmp_path, with_links=False)
+
+        # Create a project file that links to the external file via file:///
+        file_uri = f"file:///{str(doc).replace(chr(92), '/')}"
+        (project_root / "linker.md").write_text(
+            f"[Ext]({file_uri})", encoding="utf-8"
+        )
+
+        eng = GraphEngine(project_root, external_paths=[str(ext_dir)])
+        eng.scan_all()
+
+        doc_path = str(doc).replace("\\", "/")
+        graph_data = eng.get_graph_data()
+
+        # Check the external node exists in graph
+        external_nodes = [n for n in graph_data["nodes"] if n.get("is_external")]
+        assert len(external_nodes) == 1
+        ext_node = external_nodes[0]
+        assert ext_node["mounted"] is True
+        assert ext_node["absent"] is False
+
+        # Check edge from linker.md to the external node
+        ext_edges = [e for e in graph_data["edges"] if e.get("is_external")]
+        assert len(ext_edges) == 1
+
+        # Check the external file was added to files
+        assert doc_path in eng.files
+
+    def test_file_uri_unmounted_creates_leaf_node(self, project_root, tmp_path):
+        """file:/// target outside external_paths → unmounted leaf node."""
+        ext_dir, doc = self._make_ext_dir(tmp_path)
+
+        file_uri = f"file:///{str(doc).replace(chr(92), '/')}"
+        (project_root / "linker.md").write_text(
+            f"[Ext]({file_uri})", encoding="utf-8"
+        )
+
+        # external_paths does NOT include ext_dir
+        eng = GraphEngine(project_root, external_paths=[])
+        eng.scan_all()
+
+        graph_data = eng.get_graph_data()
+        external_nodes = [n for n in graph_data["nodes"] if n.get("is_external")]
+        assert len(external_nodes) == 1
+        ext_node = external_nodes[0]
+        assert ext_node["mounted"] is False
+        assert ext_node["absent"] is False
+
+        # Edge still created
+        ext_edges = [e for e in graph_data["edges"] if e.get("is_external")]
+        assert len(ext_edges) == 1
+
+    def test_file_uri_broken_missing_target(self, project_root):
+        """file:/// target that doesn't exist → broken external ref."""
+        (project_root / "linker.md").write_text(
+            "[Missing](file:///C:/nonexistent/path/file.md)", encoding="utf-8"
+        )
+
+        eng = GraphEngine(project_root, external_paths=[])
+        eng.scan_all()
+
+        graph_data = eng.get_graph_data()
+        external_nodes = [n for n in graph_data["nodes"] if n.get("is_external")]
+        assert len(external_nodes) == 1
+        ext_node = external_nodes[0]
+        assert ext_node["mounted"] is False
+        assert ext_node["absent"] is True
+
+        # Edge still created (broken ref)
+        ext_edges = [e for e in graph_data["edges"] if e.get("is_external")]
+        assert len(ext_edges) == 1
+
+    def test_file_uri_mounted_within_nested_path(self, project_root, tmp_path):
+        """file:/// target in a subdir of an external_path → still mounted."""
+        ext_dir, doc = self._make_ext_dir(tmp_path)
+        sub = ext_dir / "sub"
+        sub.mkdir()
+        sub_doc = sub / "nested.md"
+        sub_doc.write_text("# Nested external", encoding="utf-8")
+
+        file_uri = f"file:///{str(sub_doc).replace(chr(92), '/')}"
+        (project_root / "linker.md").write_text(
+            f"[Nested]({file_uri})", encoding="utf-8"
+        )
+
+        eng = GraphEngine(project_root, external_paths=[str(ext_dir)])
+        eng.scan_all()
+
+        graph_data = eng.get_graph_data()
+        external_nodes = [n for n in graph_data["nodes"] if n.get("is_external")]
+        assert len(external_nodes) == 1
+        ext_node = external_nodes[0]
+        assert ext_node["mounted"] is True
+
+    def test_file_uri_mounted_normalized_paths(self, project_root, tmp_path):
+        """file:/// with backslashes in URI is handled correctly on Windows."""
+        ext_dir, doc = self._make_ext_dir(tmp_path, with_links=False)
+        doc_path_str = str(doc).replace("\\", "/")
+
+        file_uri = f"file:///{doc_path_str}"
+        (project_root / "linker.md").write_text(
+            f"[Ext]({file_uri})", encoding="utf-8"
+        )
+
+        eng = GraphEngine(project_root, external_paths=[str(ext_dir)])
+        eng.scan_all()
+
+        ext_nodes_in_graph = [n for n, d in eng.graph.nodes(data=True)
+                              if d.get("is_external")]
+        assert len(ext_nodes_in_graph) == 1
+
+    def test_file_uri_update_file_rebuilds_external(self, project_root, tmp_path):
+        """update_file() also handles file:/// links for mounted targets."""
+        ext_dir, doc = self._make_ext_dir(tmp_path, with_links=False)
+
+        file_uri = f"file:///{str(doc).replace(chr(92), '/')}"
+        linker = project_root / "linker.md"
+        linker.write_text(f"[Ext]({file_uri})", encoding="utf-8")
+
+        eng = GraphEngine(project_root, external_paths=[str(ext_dir)])
+        eng.scan_all()
+
+        # Modify linker.md
+        linker.write_text(
+            f"[Ext]({file_uri})\n\nAlso [Tools](TOOLS.md)", encoding="utf-8"
+        )
+        eng.update_file("linker.md", event="modified")
+
+        graph_data = eng.get_graph_data()
+        external_nodes = [n for n in graph_data["nodes"] if n.get("is_external")]
+        assert len(external_nodes) == 1
+        assert external_nodes[0]["mounted"] is True
+
+    def test_engine_respects_external_paths_param(self, project_root):
+        """GraphEngine.__init__ stores and normalizes external_paths."""
+        eng = GraphEngine(project_root, external_paths=["C:/shared/docs"])
+        assert len(eng.external_paths) == 1
+        # resolve() may change case on Windows; check the path ends correctly
+        assert eng.external_paths[0].replace("\\", "/").lower().endswith("shared/docs")
+
+        # Empty by default
+        eng2 = GraphEngine(project_root)
+        assert eng2.external_paths == []
+
+    def test_is_within_external_paths_helper(self, project_root, tmp_path):
+        """_is_within_external_paths correctly checks containment."""
+        ext_dir, doc = self._make_ext_dir(tmp_path)
+        ext_dir_str = str(ext_dir).replace("\\", "/")
+        doc_str = str(doc).replace("\\", "/")
+        outside_str = str(tmp_path / "outside" / "file.md").replace("\\", "/")
+
+        eng = GraphEngine(project_root, external_paths=[str(ext_dir)])
+        assert eng._is_within_external_paths(doc_str) is True
+        assert eng._is_within_external_paths(outside_str) is False
+        assert eng._is_within_external_paths(ext_dir_str) is True
+
+    def test_mounted_external_outgoing_relative_link_becomes_edge(
+        self, project_root, tmp_path
+    ):
+        """Mounted external file's outgoing relative link → edge to sibling ext file."""
+        ext_dir = tmp_path / "ext_lib"
+        ext_dir.mkdir()
+        target_file = ext_dir / "REQUIREMENTS.md"
+        target_file.write_text("# Requirements", encoding="utf-8")
+        source_file = ext_dir / "PROGRESS.md"
+        source_file.write_text(
+            "# Progress\n\nSee [Requirements](./REQUIREMENTS.md)",
+            encoding="utf-8",
+        )
+
+        file_uri = f"file:///{str(source_file).replace(chr(92), '/')}"
+        (project_root / "linker.md").write_text(
+            f"[Progress]({file_uri})", encoding="utf-8"
+        )
+
+        eng = GraphEngine(project_root, external_paths=[str(ext_dir)])
+        eng.scan_all()
+
+        source_path = str(source_file).replace("\\", "/")
+        target_path = str(target_file).replace("\\", "/")
+
+        # Check both external nodes exist
+        graph_data = eng.get_graph_data()
+        external_nodes = [n for n in graph_data["nodes"] if n.get("is_external")]
+        assert len(external_nodes) >= 2
+
+        # Check edge: source → target
+        edges = eng.graph.edges()
+        edge_pairs = {(s, t) for s, t in edges}
+        assert (source_path, target_path) in edge_pairs
+
+    def test_mounted_external_outgoing_unmounted_becomes_leaf(
+        self, project_root, tmp_path
+    ):
+        """Mounted external file links to a file:/// target outside external_paths → unmounted leaf."""
+        ext_dir = tmp_path / "ext_lib"
+        ext_dir.mkdir()
+        outside_dir = tmp_path / "outside"
+        outside_dir.mkdir()
+        outside_file = outside_dir / "other.md"
+        outside_file.write_text("# Other", encoding="utf-8")
+
+        source_file = ext_dir / "PROGRESS.md"
+        outside_uri = f"file:///{str(outside_file).replace(chr(92), '/')}"
+        source_file.write_text(
+            f"# Progress\n\nSee [Other]({outside_uri})",
+            encoding="utf-8",
+        )
+
+        file_uri = f"file:///{str(source_file).replace(chr(92), '/')}"
+        (project_root / "linker.md").write_text(
+            f"[Progress]({file_uri})", encoding="utf-8"
+        )
+
+        eng = GraphEngine(project_root, external_paths=[str(ext_dir)])
+        eng.scan_all()
+
+        graph_data = eng.get_graph_data()
+        external_nodes = [n for n in graph_data["nodes"] if n.get("is_external")]
+        assert len(external_nodes) >= 2
+
+        source_path = str(source_file).replace("\\", "/")
+        outside_path = str(outside_file).replace("\\", "/")
+
+        # The outside file should be an unmounted external leaf
+        outside_node = [n for n in external_nodes if n["id"] == outside_path]
+        assert len(outside_node) == 1
+        assert outside_node[0]["mounted"] is False
+
+        # Edge: source → outside
+        edges = eng.graph.edges()
+        edge_pairs = {(s, t) for s, t in edges}
+        assert (source_path, outside_path) in edge_pairs
+
+    def test_poll_external_files_skips_unmounted_and_network_refs(self, project_root, tmp_path):
+        """Polling must only stat mounted external files."""
+        ext_dir, mounted_file = self._make_ext_dir(tmp_path, with_links=False)
+        outside_dir = tmp_path / "outside"
+        outside_dir.mkdir()
+        outside_file = outside_dir / "other.md"
+        outside_file.write_text("# Other", encoding="utf-8")
+
+        eng = GraphEngine(project_root, external_paths=[str(ext_dir)])
+        mounted_path = str(mounted_file).replace("\\", "/")
+        outside_path = str(outside_file).replace("\\", "/")
+        eng.graph.add_node(mounted_path, **{
+            "type": "external", "is_external": True, "mounted": True,
+            "exists": True, "abs_path": mounted_path, "last_modified": "old",
+        })
+        eng.graph.add_node(outside_path, **{
+            "type": "external", "is_external": True, "mounted": False,
+            "exists": True, "abs_path": outside_path, "last_modified": "old",
+        })
+        eng.graph.add_node("file:////server/share/doc.md", **{
+            "type": "external", "is_external": True, "mounted": False,
+            "exists": None, "abs_path": "file:////server/share/doc.md",
+        })
+
+        changed = eng.poll_external_files()
+
+        changed_paths = {item["path"] for item in changed}
+        assert mounted_path in changed_paths
+        assert outside_path not in changed_paths
+        assert "file:////server/share/doc.md" not in changed_paths
+        assert eng.graph.nodes[outside_path]["last_modified"] == "old"

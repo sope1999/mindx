@@ -35,6 +35,11 @@ watchers: dict = {}      # project_name -> FileWatcher
 active_project: str = None
 
 
+def _is_network_path(path: str) -> bool:
+    """Return True for UNC/protocol-relative paths that may touch network shares."""
+    return path.startswith("\\\\") or path.startswith("//") or path.startswith("file:////")
+
+
 def _get_active_engine() -> GraphEngine:
     """Return the engine for the currently active project."""
     if active_project is None or active_project not in engines:
@@ -52,7 +57,9 @@ def _get_active_watcher() -> FileWatcher:
 def _init_project(name: str, root: Path) -> GraphEngine:
     """Initialize engine for a project. Creates engine+watcher if not yet done."""
     if name not in engines:
-        engines[name] = GraphEngine(root)
+        proj = get_project_config(_config, name)
+        ext_paths = proj.get("external_paths", []) if proj else []
+        engines[name] = GraphEngine(root, external_paths=ext_paths)
     return engines[name]
 
 
@@ -322,6 +329,20 @@ def api_file_detail(file_path: str):
             {"target": l.target, "anchor": l.anchor_text, "context": l.context[:60]}
             for l in info.links
         ]
+    elif file_path in engine.graph:
+        ndata = engine.graph.nodes[file_path]
+        result["type"] = ndata.get("type", "external")
+        result["exists"] = ndata.get("exists")
+        result["size"] = ndata.get("size", 0)
+        result["abs_path"] = ndata.get("abs_path", file_path)
+        result["last_modified"] = ndata.get("last_modified")
+        result["links"] = []
+
+    if file_path in engine.graph:
+        ndata = engine.graph.nodes[file_path]
+        for field in ("is_external", "mounted", "external_status", "target_exists", "broken", "abs_path"):
+            if field in ndata:
+                result[field] = ndata[field]
 
     # Check for broken links (only within project)
     proj = get_project_config(_config, active_project)
@@ -329,7 +350,14 @@ def api_file_detail(file_path: str):
     issues = []
     for link in (info.links if info else []):
         if link.is_external:
-            continue  # skip external link validation
+            node = engine.graph.nodes.get(link.target, {})
+            if node.get("broken") or node.get("absent"):
+                issues.append({
+                    "type": "broken_external_link",
+                    "target": link.target,
+                    "detail": f"外部链接目标不存在: {link.target}",
+                })
+            continue
         target_path = link.target
         if not (project_root / target_path).exists():
             issues.append({
@@ -430,6 +458,16 @@ def api_broken_links():
     for file_path, info in engine.files.items():
         for link in info.links:
             if link.is_external:
+                node = engine.graph.nodes.get(link.target, {})
+                if node.get("broken") or node.get("absent"):
+                    broken_links.append({
+                        "file": file_path,
+                        "target": link.target,
+                        "link_type": link.link_type,
+                        "context": link.context,
+                        "is_external": True,
+                        "external_status": "broken",
+                    })
                 continue
             if not (project_root / link.target).exists():
                 broken_links.append({
@@ -558,6 +596,8 @@ def api_external_add():
         return jsonify({"success": False, "error": "path required"}), 400
 
     p = Path(ext_path)
+    if _is_network_path(ext_path):
+        return jsonify({"success": False, "error": "UNC/network paths are not supported"}), 400
     engine = engines.get(active_project)
     added = []
 
@@ -606,6 +646,8 @@ def api_external_add():
 
 def _persist_external(ext_path: str):
     """Save an external path to the active project's config."""
+    if _is_network_path(ext_path):
+        return
     proj = get_project_config(_config, active_project)
     if proj is None:
         return
@@ -614,10 +656,15 @@ def _persist_external(ext_path: str):
     if normalized not in proj["external_paths"]:
         proj["external_paths"].append(normalized)
         save_config(_config)
+    engine = engines.get(active_project)
+    if engine is not None and normalized not in engine.external_paths:
+        engine.external_paths.append(normalized)
 
 
 def _unpersist_external(ext_path: str):
     """Remove an external path from the active project's config."""
+    if _is_network_path(ext_path):
+        return
     proj = get_project_config(_config, active_project)
     if proj is None:
         return
@@ -626,6 +673,9 @@ def _unpersist_external(ext_path: str):
     if normalized in paths:
         paths.remove(normalized)
         save_config(_config)
+    engine = engines.get(active_project)
+    if engine is not None:
+        engine.external_paths = [p for p in engine.external_paths if p != normalized]
 
 
 @app.route("/api/external/remove", methods=["POST"])
@@ -878,6 +928,8 @@ def _load_externals(project_name: str, engine: GraphEngine):
     if not proj:
         return
     for ext_path in proj.get("external_paths", []):
+        if _is_network_path(ext_path):
+            continue
         p = Path(ext_path)
         if not p.exists():
             continue

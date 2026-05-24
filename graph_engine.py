@@ -14,6 +14,11 @@ from config import SYNC_RULES, IGNORE_PATTERNS
 from parser import FileInfo, Link, parse_file
 
 
+def _is_network_path(path: str) -> bool:
+    """Return True for UNC/protocol-relative targets that may touch network shares."""
+    return path.startswith("\\\\") or path.startswith("//") or path.startswith("file:////")
+
+
 @dataclass
 class SyncSuggestion:
     """A suggestion for what needs to be synced after a file change."""
@@ -37,8 +42,13 @@ class ChangeEvent:
 class GraphEngine:
     """Manages the dependency graph and sync rule matching."""
 
-    def __init__(self, project_root: Path):
+    def __init__(self, project_root: Path, external_paths: List[str] = None):
         self.project_root = Path(project_root).resolve()
+        self.external_paths = [
+            str(Path(p).resolve())
+            for p in (external_paths or [])
+            if not _is_network_path(str(p))
+        ]
         self.graph = nx.DiGraph()
         self.files: Dict[str, FileInfo] = {}
         self.change_log: List[ChangeEvent] = []
@@ -206,67 +216,139 @@ class GraphEngine:
                 return True
         return False
 
-    def _build_edges(self):
-        """Add directed edges for all parsed links."""
-        with self._lock:
-            new_files: Dict[str, FileInfo] = {}  # collect new files to avoid dict-size-change during iteration
+    def _is_within_external_paths(self, abs_path: str) -> bool:
+        """Check if an absolute path falls within any configured external_paths."""
+        if not self.external_paths or _is_network_path(abs_path):
+            return False
+        norm = str(Path(abs_path).resolve()).replace("\\", "/")
+        for ep in self.external_paths:
+            ep_norm = str(Path(ep).resolve()).replace("\\", "/")
+            if norm.startswith(ep_norm + "/") or norm == ep_norm:
+                return True
+        return False
 
-            for file_info in list(self.files.values()):
+    def _external_node_status(self, abs_path: Path) -> tuple[bool, bool, str]:
+        """Return (exists, mounted, status) for a local external target."""
+        if _is_network_path(str(abs_path)):
+            return False, False, "unmounted"
+        exists = abs_path.exists() and abs_path.is_file()
+        mounted = self._is_within_external_paths(str(abs_path))
+        if not exists:
+            return exists, mounted, "broken"
+        if mounted:
+            return exists, mounted, "mounted"
+        return exists, mounted, "unmounted"
+
+    def _build_edges(self):
+        """Add directed edges for all parsed links.
+
+        Uses an iterative queue so that links inside newly reached
+        mounted external Markdown files are also processed (loop-safe).
+        """
+        with self._lock:
+            from collections import deque
+            processed: set = set()        # file paths whose links have been processed
+            pending = deque(self.files.keys())  # keys snapshot — avoids dict-size-change
+
+            while pending:
+                file_path = pending.popleft()
+                if file_path in processed:
+                    continue
+                processed.add(file_path)
+
+                file_info = self.files.get(file_path)
+                if not file_info:
+                    continue
+
                 for link in file_info.links:
                     target = link.target
+
+                    # ── target already in graph → edge ──
                     if target in self.graph:
                         self.graph.add_edge(file_info.path, target,
                                             link_type=link.link_type,
                                             context=link.context[:100])
-                    elif (self.project_root / target).exists():
-                        # Target exists but wasn't scanned — defer addition
-                        if target not in self.files and target not in new_files:
-                            abs_path = self.project_root / target
-                            t_info = parse_file(abs_path, self.project_root)
-                            new_files[t_info.path] = t_info
-                            edge_target = t_info.path
-                        else:
-                            # t_info already parsed; find its normalized path
-                            edge_target = target
-                            if target in new_files:
-                                edge_target = new_files[target].path
-                            elif target in self.files:
-                                edge_target = self.files[target].path
-                        self.graph.add_edge(file_info.path, edge_target,
-                                            link_type=link.link_type,
-                                            context=link.context[:100])
-                    elif link.is_external:
-                        # External target — try to stat it for light tracking
+                        continue
+
+                    # ── external target ──
+                    if link.is_external:
                         ext_abs = Path(link.target)
-                        ext_exists = ext_abs.exists() and ext_abs.is_file()
+                        if _is_network_path(link.target):
+                            ext_exists, mounted, external_status = False, False, "unmounted"
+                        else:
+                            ext_exists, mounted, external_status = self._external_node_status(ext_abs)
                         ext_size = 0
                         ext_mtime = None
-                        if ext_exists:
+                        if ext_exists and mounted:
                             try:
                                 st = ext_abs.stat()
                                 ext_size = st.st_size
                                 ext_mtime = datetime.fromtimestamp(st.st_mtime)
                             except OSError:
                                 ext_exists = False
-                        if target not in self.graph and target not in new_files:
-                            self.graph.add_node(target, **{
+
+                        if target not in self.graph:
+                            if mounted and ext_exists:
+                                # Parse the mounted external file and enqueue
+                                # for link-processing if newly discovered
+                                t_info = parse_file(ext_abs, self.project_root)
+                                t_info.file_type = "external"
+                                edge_target = t_info.path
+                                if t_info.path not in self.files:
+                                    self.files[t_info.path] = t_info
+                                    if t_info.path not in processed:
+                                        pending.append(t_info.path)
+                            else:
+                                edge_target = target
+
+                            self.graph.add_node(edge_target, **{
                                 "type": "external",
-                                "exists": ext_exists,
-                                "label": Path(target).name,
+                                "exists": None if _is_network_path(link.target) else ext_exists,
+                                "label": Path(edge_target).name,
                                 "is_external": True,
+                                "mounted": mounted,
+                                "absent": external_status == "broken",
+                                "external_status": external_status,
+                                "target_exists": None if _is_network_path(link.target) else ext_exists,
+                                "broken": external_status == "broken",
                                 "abs_path": str(ext_abs),
-                                "size": ext_size,
+                                "size": ext_size if not mounted else 0,
                                 "last_modified": ext_mtime.isoformat() if ext_mtime else None,
                             })
-                        self.graph.add_edge(file_info.path, target,
+
+                        self.graph.add_edge(file_info.path, edge_target,
                                             link_type=link.link_type,
                                             context=link.context[:100])
+                        continue
 
-            # Add deferred files
-            for path, info in new_files.items():
-                self.files[path] = info
-                if path not in self.graph:
-                    self.graph.add_node(path)
+                    # ── internal target (exists under project_root) ──
+                    if (self.project_root / target).exists():
+                        if target not in self.files:
+                            abs_path = self.project_root / target
+                            t_info = parse_file(abs_path, self.project_root)
+                            edge_target = t_info.path
+                            self.files[t_info.path] = t_info
+                            if t_info.path not in processed:
+                                pending.append(t_info.path)
+                            if edge_target not in self.graph:
+                                self.graph.add_node(edge_target, **{
+                                    "type": t_info.file_type,
+                                    "exists": t_info.exists,
+                                    "label": Path(edge_target).name,
+                                })
+                        else:
+                            edge_target = target
+                            if edge_target not in self.graph:
+                                ndata = self.files[edge_target]
+                                self.graph.add_node(edge_target, **{
+                                    "type": ndata.file_type,
+                                    "exists": ndata.exists,
+                                    "label": Path(edge_target).name,
+                                })
+
+                        self.graph.add_edge(file_info.path, edge_target,
+                                            link_type=link.link_type,
+                                            context=link.context[:100])
 
     def update_file(self, rel_path: str, event: str = "modified"):
         """Handle a file change event. Returns sync suggestions."""
@@ -310,21 +392,65 @@ class GraphEngine:
                     "exists": info.exists,
                 }})
 
-                # Rebuild edges for this file
-                for link in info.links:
-                    target = link.target
-                    # Ensure target node exists
-                    if target not in self.graph and (self.project_root / target).exists():
-                        t_info = parse_file(self.project_root / target, self.project_root)
-                        self.files[t_info.path] = t_info
-                        self.graph.add_node(t_info.path, **{
-                            "type": t_info.file_type, "exists": t_info.exists,
-                            "label": Path(t_info.path).name,
-                        })
-                    if target in self.graph:
-                        self.graph.add_edge(rel_path, target,
-                                            link_type=link.link_type,
-                                            context=link.context[:100])
+                # Rebuild edges for this file (and newly reached mounted external files)
+                from collections import deque
+                edge_queue = deque([(info, rel_path)])  # (FileInfo, graph_key)
+                edge_processed: set = {rel_path}
+
+                while edge_queue:
+                    cur_info, cur_key = edge_queue.popleft()
+
+                    for link in cur_info.links:
+                        target = link.target
+                        # Ensure target node exists (internal, not external)
+                        if target not in self.graph and not link.is_external and (self.project_root / target).exists():
+                            t_info = parse_file(self.project_root / target, self.project_root)
+                            self.files[t_info.path] = t_info
+                            self.graph.add_node(t_info.path, **{
+                                "type": t_info.file_type, "exists": t_info.exists,
+                                "label": Path(t_info.path).name,
+                            })
+                        # External file:/// links: ensure node exists with mounted/unmounted/broken
+                        if target not in self.graph and link.is_external:
+                            ext_abs = Path(target)
+                            if _is_network_path(target):
+                                ext_exists, mounted, external_status = False, False, "unmounted"
+                            else:
+                                ext_exists, mounted, external_status = self._external_node_status(ext_abs)
+                            if mounted and ext_exists:
+                                t_info = parse_file(ext_abs, self.project_root)
+                                t_info.file_type = "external"
+                                self.files[t_info.path] = t_info
+                                self.graph.add_node(t_info.path, **{
+                                    "type": "external", "exists": True,
+                                    "label": Path(t_info.path).name,
+                                    "is_external": True, "mounted": True,
+                                    "absent": False, "external_status": external_status,
+                                    "target_exists": True, "broken": False,
+                                    "abs_path": str(ext_abs),
+                                })
+                                target = t_info.path
+                                # Enqueue newly reached file for edge processing
+                                if t_info.path not in edge_processed:
+                                    edge_processed.add(t_info.path)
+                                    edge_queue.append((t_info, t_info.path))
+                            else:
+                                self.graph.add_node(target, **{
+                                    "type": "external",
+                                    "exists": None if _is_network_path(target) else ext_exists,
+                                    "label": Path(target).name,
+                                    "is_external": True,
+                                    "mounted": mounted,
+                                    "absent": external_status == "broken",
+                                    "external_status": external_status,
+                                    "target_exists": None if _is_network_path(target) else ext_exists,
+                                    "broken": external_status == "broken",
+                                    "abs_path": str(ext_abs),
+                                })
+                        if target in self.graph:
+                            self.graph.add_edge(cur_key, target,
+                                                link_type=link.link_type,
+                                                context=link.context[:100])
 
             # Generate sync suggestions
             suggestions = self._generate_suggestions(rel_path, event, broken_refs)
@@ -517,6 +643,12 @@ class GraphEngine:
                     "title": f"{node}\n类型: {ndata.get('type', '?')}",
                     "is_external": ndata.get("is_external", False),
                     "mounted": ndata.get("mounted", False),
+                    "exists": ndata.get("exists"),
+                    "absent": ndata.get("absent", False),
+                    "external_status": ndata.get("external_status"),
+                    "target_exists": ndata.get("target_exists"),
+                    "broken": ndata.get("broken", False),
+                    "abs_path": ndata.get("abs_path"),
                 })
 
             for source, target, data in self.graph.edges(data=True):
@@ -571,6 +703,8 @@ class GraphEngine:
                 if not ndata.get("is_external"):
                     continue
                 abs_path_str = ndata.get("abs_path", node_id)
+                if not ndata.get("mounted") or _is_network_path(str(abs_path_str)):
+                    continue
                 abs_path = Path(abs_path_str)
                 prev_exists = ndata.get("exists", False)
                 prev_mtime = ndata.get("last_modified")

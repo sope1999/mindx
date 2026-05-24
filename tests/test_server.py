@@ -4,6 +4,7 @@ import pytest
 import tempfile
 import yaml
 from pathlib import Path
+from graph_engine import GraphEngine
 
 
 @pytest.fixture
@@ -193,6 +194,46 @@ class TestBrokenLinks:
         assert "count" in data
         # Test data has all valid links, so count may be 0
         assert isinstance(data["count"], int)
+
+    def test_external_broken_links_are_reported(self, app):
+        import server
+
+        _select_project(app)
+        engine = server.engines[server.active_project]
+        project_root = engine.project_root
+        (project_root / "BROKEN_EXTERNAL.md").write_text(
+            "[Missing](file:///C:/definitely/missing/mindx-file.md)", encoding="utf-8"
+        )
+        engine.scan_all()
+
+        resp = app.get("/api/broken-links")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert any(bl.get("is_external") for bl in data["broken_links"])
+
+    def test_file_detail_falls_back_to_external_graph_node(self, app):
+        import server
+
+        _select_project(app)
+        engine: GraphEngine = server.engines[server.active_project]
+        external_path = "C:/shared/unmounted.md"
+        engine.graph.add_node(external_path, **{
+            "type": "external",
+            "exists": True,
+            "label": "unmounted.md",
+            "is_external": True,
+            "mounted": False,
+            "external_status": "unmounted",
+            "target_exists": True,
+            "broken": False,
+            "abs_path": external_path,
+        })
+
+        resp = app.get("/api/file/" + external_path)
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["is_external"] is True
+        assert data["external_status"] == "unmounted"
 
 
 # ── Changes ───────────────────────────────────────────────────
