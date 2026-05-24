@@ -1,7 +1,7 @@
-# mindx v4.5：AI 可读项目手册
+# mindx v4.6：AI 可读项目手册
 
 > 本文档是 AI agent 处理 mindx 项目时的唯一事实来源。
-> 最近一次按源码核验：2026-05-23。
+> 最近一次按源码核验：2026-05-24。
 
 ## 目录
 
@@ -64,16 +64,16 @@ projects:
 
 | 文件 | 约行数 | 用途 | 关键项 |
 |------|--------|------|--------|
-| `server.py` | 995 | Flask 路由、SocketIO 事件、多项目管理、外部文件轮询、启动流程 | `active_project`、`engines{}`、`watchers{}`、`init_engine()`、`_load_externals()`、`_poll_external_files()`、全部 `/api/*` 路由、`run_server()` |
-| `graph_engine.py` | 552 | NetworkX 图构建与查询、同步建议、外部文件轮询、历史持久化 | `GraphEngine(project_root)`、`scan_all()`、`update_file()`、`get_graph_data()`、`get_dependencies()`、`get_stats()`、`poll_external_files()`、`_generate_suggestions()`、`_rule_matches()`、`_find_parent_index()`、`SyncSuggestion`、`ChangeEvent` |
-| `parser.py` | 230 | Markdown 链接提取、文件分类、文件元数据 | `parse_file()`、`resolve_link_target()`、`extract_md_links()`、`strip_root()`、`Link`、`FileInfo`、`_classify_file()` |
+| `server.py` | 1106 | Flask 路由、SocketIO 事件、多项目管理、外部文件轮询、启动流程 | `active_project`、`engines{}`、`watchers{}`、`init_engine()`、`_load_externals()`、`_poll_external_files()`、全部 `/api/*` 路由、`run_server()` |
+| `graph_engine.py` | 737 | NetworkX 图构建与查询、同步建议、外部文件轮询、历史持久化、外部节点状态 | `GraphEngine(project_root, external_paths)`、`scan_all()`、`update_file()`、`get_graph_data()`、`get_dependencies()`、`get_stats()`、`poll_external_files()`、`_external_node_status()`、`_generate_suggestions()`、`SyncSuggestion`、`ChangeEvent` |
+| `parser.py` | 282 | Markdown 链接提取、file:/// 规范化、文件分类、文件元数据 | `parse_file()`、`normalize_file_uri()`、`resolve_link_target()`、`extract_md_links()`、`strip_root()`、`Link`、`FileInfo`、`_classify_file()` |
 | `watcher.py` | 157 | `watchdog` observer 包装与 500ms 防抖 | `FileWatcher(project_root, on_change)`、`MindxEventHandler`、`start()`、`stop()`、`restart()`、`_should_ignore()`、`_should_track()`、`_debounce_check()` |
-| `config.py` | 199 | `config.yaml` 管理与常量 | `load_config()`、`save_config()`、`add_project()`、`remove_project()`、`get_project_config()`、`FILE_TYPES`、`SYNC_RULES`、`IGNORE_PATTERNS`、`HOST`、`PORT` |
-| `mcp_server.py` | 约 470 | MCP stdio 服务，通过 HTTP 代理调用 Flask | 16 个 MCP 工具，覆盖项目、图、文件、反向链接、断链、断链静默、历史、扫描和同步建议 |
-| `templates/index.html` | 约 291 | 单页应用 HTML | 项目标签、文件树面板、4 个标签页，`ref-tree`、`dir-tree`、`dep-graph`、`detail`，设置弹窗、确认弹窗、错误弹窗、文件夹选择输入 |
-| `static/css/style.css` | 约 949 | 深色与浅色主题 CSS | `:root` 变量、`[data-theme="light"]` 覆盖、树、图、详情面板、弹窗、信息流样式 |
-| `static/js/app.js` | 902 | 全部前端逻辑 | 全局 `S` 状态对象、分类、树、图、设置、项目、SocketIO、标签切换、重命名、历史面板等函数 |
-| `tests/` | 不适用 | Python 与 JavaScript 回归测试 | `test_parser.py`、`test_graph_engine.py`、`test_server.py`、`test_mcp_server.py`、`app.test.js`。当前收集到 103 个 pytest 测试，`app.test.js` 中有 65 个 Jest 测试 |
+| `config.py` | 227 | `config.yaml` 管理与常量 | `load_config()`、`save_config()`、`add_project()`、`remove_project()`、`get_project_config()`、`FILE_TYPES`、`SYNC_RULES`、`IGNORE_PATTERNS`、`HOST`、`PORT` |
+| `mcp_server.py` | 530 | MCP stdio 服务，通过 HTTP 代理调用 Flask | 16 个 MCP 工具，覆盖项目、图、文件、反向链接、断链、断链静默、历史、扫描和同步建议 |
+| `templates/index.html` | 340 | 单页应用 HTML | 项目标签、文件树面板、4 个标签页，`ref-tree`、`dir-tree`、`dep-graph`、`detail`，设置弹窗、确认弹窗、错误弹窗、文件夹选择输入 |
+| `static/css/style.css` | 1054 | 深色与浅色主题 CSS | `:root` 变量、`[data-theme="light"]` 覆盖、树、图、详情面板、弹窗、信息流样式、外部节点虚线样式 |
+| `static/js/app.js` | 977 | 全部前端逻辑 | 全局 `S` 状态对象、分类、树、图、外部节点过滤、设置、项目、SocketIO、标签切换、重命名、历史面板等函数 |
+| `tests/` | 不适用 | Python 与 JavaScript 回归测试 | `test_parser.py`、`test_graph_engine.py`、`test_server.py`、`test_mcp_server.py`、`app.test.js`。当前有 136 个 pytest 测试，`app.test.js` 中有 77 个 Jest 测试 |
 
 **辅助文件：**
 
@@ -84,7 +84,7 @@ projects:
 | `requirements-mcp.txt` | MCP 服务依赖，包含 `mcp`、`requests` |
 | `package.json` / `jest.config.js` | Jest 测试基础设施 |
 | `.gitignore` | 忽略 `node_modules`、`__pycache__`、`.pytest_cache` 等生成文件 |
-| `start-mindx.ps1` / `stop-mindx.ps1` | PowerShell 启动与停止脚本 |
+| `start-mindx.ps1` / `stop-mindx.ps1` | PowerShell 启动与停止脚本，启动脚本会检测端口、请求 `/api/status`，失败时输出 `%TEMP%\mindx-startup.log` 最近日志 |
 
 ---
 
@@ -131,9 +131,11 @@ GET  /api/file/<path:file_path>/backlinks
 
 GET  /api/broken-links
   返回 {broken_links: [{file, target, link_type, context, is_external?, external_status?, target_exists?}], count, total_count?}
+  对同一 (file, target) 断链去重，外部断链也可静默
 
 GET  /api/graph
   返回 {nodes: [{id, label, group, title, is_external, mounted, external_status?}], edges: [{from, to, label, title, is_external, external_status?}]}
+  前端视觉视图会过滤 external_status 为 broken 的外部节点
 
 GET  /api/scan
   执行 engine.scan_all()，随后调用 _load_externals(active_project, engine)
