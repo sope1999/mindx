@@ -1,4 +1,4 @@
-# mindx v4.5 停止脚本
+# mindx v4.6 停止脚本
 # 停止 Web 服务 + MCP 残留进程
 
 $port = 5020

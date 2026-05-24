@@ -1,4 +1,4 @@
-# mindx v4.5 启动脚本
+# mindx v4.6 启动脚本
 # 后台静默启动 Web 服务，不阻塞终端
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -32,16 +32,38 @@ if (Test-Path $pycache) {
     Remove-Item -Recurse -Force $pycache -ErrorAction SilentlyContinue
 }
 
-# 启动 Web 服务
-Start-Process python -ArgumentList "`"$serverPath`"" -WindowStyle Hidden
+# 启动 Web 服务（重定向输出到日志以便诊断启动失败）
+$logFile = Join-Path $env:TEMP "mindx-startup.log"
+Start-Process python -ArgumentList "`"$serverPath`"" -WindowStyle Hidden -RedirectStandardError $logFile -RedirectStandardOutput $logFile
 Start-Sleep -Seconds 10
 
-# 验证
+# 检查进程是否存活
+$svrProc = Get-Process -Name "python" -ErrorAction SilentlyContinue | Where-Object { $_.Id -eq (Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue | Where-Object { $_.State -ne 'TimeWait' }).OwningProcess }
+$processAlive = $null -ne $svrProc
+
+if (-not $svrProc) {
+    # 没找到占用端口的进程，可能启动就崩溃了
+    Write-Host "[!] 启动失败 — Python 进程未存活"
+    if (Test-Path $logFile) {
+        $errTail = Get-Content $logFile -Tail 20 -Encoding UTF8 -ErrorAction SilentlyContinue
+        if ($errTail) {
+            Write-Host "--- 最近日志 ---"
+            Write-Host ($errTail -join "`n")
+        }
+        Remove-Item $logFile -ErrorAction SilentlyContinue
+    }
+    Write-Host "请检查 Python 依赖和 server.py 语法"
+    exit 1
+}
+
+# 验证服务响应
 try {
     $r = Invoke-WebRequest -Uri "http://127.0.0.1:$port/api/status" -UseBasicParsing -TimeoutSec 5
     Write-Host "mindx 已启动"
     Write-Host "Web UI : http://127.0.0.1:$port"
     if ($mcpOk) { Write-Host "MCP    : python $scriptDir\mcp_server.py" }
 } catch {
+    Write-Host "[!] 端口 $port 被占用但 API 无响应（进程 PID: $($svrProc.Id)）"
+    Write-Host "请检查服务日志: $logFile"
     Write-Host "mindx 启动中，请稍后刷新 http://127.0.0.1:$port"
 }
