@@ -115,7 +115,7 @@ function getDisplayFile(path) {
 function getDisplayFiles() {
   const byPath = new Map(S.files.map(f => [f.path, f]));
   for (const node of (S.graphData?.nodes || [])) {
-    if (node.is_external && !byPath.has(node.id)) byPath.set(node.id, getDisplayFile(node.id));
+    if (node.is_external && !byPath.has(node.id) && node.absent !== true && node.exists !== false) byPath.set(node.id, getDisplayFile(node.id));
   }
   return [...byPath.values()].filter(Boolean);
 }

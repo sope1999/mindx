@@ -634,7 +634,70 @@ describe('external reference display status', () => {
 });
 
 // ═══════════════════════════════════════════
-// 15. getFtypeLabel
+// 15. getDisplayFiles skips broken external nodes
+// ═══════════════════════════════════════════
+describe('getDisplayFiles skips broken external nodes', () => {
+  test('excludes nodes with exists=false from display files', () => {
+    S.files = [{ path: 'MEMORY.md', type: 'root_index' }];
+    S.graphData = {
+      nodes: [
+        { id: 'MEMORY.md', is_external: false },
+        { id: 'C:/ext/missing.md', is_external: true, exists: false, group: 'external' },
+      ],
+      edges: [{ from: 'MEMORY.md', to: 'C:/ext/missing.md' }],
+    };
+
+    const paths = getDisplayFiles().map(f => f.path);
+    expect(paths).not.toContain('C:/ext/missing.md');
+    // But getDisplayFile still works for detail panel
+    expect(getDisplayFile('C:/ext/missing.md')).toBeTruthy();
+  });
+
+  test('excludes nodes with absent=true from display files', () => {
+    S.files = [{ path: 'MEMORY.md', type: 'root_index' }];
+    S.graphData = {
+      nodes: [
+        { id: 'MEMORY.md', is_external: false },
+        { id: 'C:/ext/absent.md', is_external: true, absent: true, group: 'external' },
+      ],
+      edges: [{ from: 'MEMORY.md', to: 'C:/ext/absent.md' }],
+    };
+
+    const paths = getDisplayFiles().map(f => f.path);
+    expect(paths).not.toContain('C:/ext/absent.md');
+  });
+
+  test('includes mounted external nodes with exists=true', () => {
+    S.files = [{ path: 'MEMORY.md', type: 'root_index' }];
+    S.graphData = {
+      nodes: [
+        { id: 'MEMORY.md', is_external: false },
+        { id: 'C:/ext/real.md', is_external: true, exists: true, mounted: true, group: 'external' },
+      ],
+      edges: [{ from: 'MEMORY.md', to: 'C:/ext/real.md' }],
+    };
+
+    const paths = getDisplayFiles().map(f => f.path);
+    expect(paths).toContain('C:/ext/real.md');
+  });
+
+  test('includes unmounted external leaf nodes with exists=true', () => {
+    S.files = [{ path: 'MEMORY.md', type: 'root_index' }];
+    S.graphData = {
+      nodes: [
+        { id: 'MEMORY.md', is_external: false },
+        { id: 'C:/ext/leaf.md', is_external: true, mounted: false, exists: true, group: 'external' },
+      ],
+      edges: [{ from: 'MEMORY.md', to: 'C:/ext/leaf.md' }],
+    };
+
+    const paths = getDisplayFiles().map(f => f.path);
+    expect(paths).toContain('C:/ext/leaf.md');
+  });
+});
+
+// ═══════════════════════════════════════════
+// 16. getFtypeLabel
 // ═══════════════════════════════════════════
 describe('getFtypeLabel', () => {
   test('returns Chinese label for root_index', () => {
@@ -647,7 +710,7 @@ describe('getFtypeLabel', () => {
 });
 
 // ═══════════════════════════════════════════
-// 16. bumpReadCount / getReadCount
+// 17. bumpReadCount / getReadCount
 // ═══════════════════════════════════════════
 describe('bumpReadCount / getReadCount', () => {
   test('bumps read count and returns incremented value', () => {
@@ -669,7 +732,7 @@ describe('bumpReadCount / getReadCount', () => {
 });
 
 // ═══════════════════════════════════════════
-// 17. buildRefTree
+// 18. buildRefTree
 // ═══════════════════════════════════════════
 describe('buildRefTree', () => {
   test('builds tree from graph edges', () => {
