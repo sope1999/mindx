@@ -443,3 +443,36 @@ class TestExtractMdLinksFileUri:
         assert links[0].link_type == "md_link"
         assert links[1].is_file_uri is True
         assert links[1].link_type == "external_link"
+
+
+# ---------------------------------------------------------------------------
+# inline code span skipping — links inside `...` must not be parsed
+# ---------------------------------------------------------------------------
+
+class TestInlineCodeSkipping:
+    def test_single_backtick_skipped(self, project_root):
+        content = "See `[文本](file:///C:/路径.md)` for docs."
+        links = extract_md_links(content, "MEMORY.md", project_root)
+        assert len(links) == 0
+
+    def test_backtick_skipped_real_link_outside(self, project_root):
+        content = "See `[文本](file:///C:/fake.md)` and real [Tools](TOOLS.md)."
+        links = extract_md_links(content, "MEMORY.md", project_root)
+        assert len(links) == 1
+        assert links[0].target == "TOOLS.md"
+
+    def test_double_backtick_skipped(self, project_root):
+        content = "Example ``[ref](file:///C:/example.md)`` here."
+        links = extract_md_links(content, "MEMORY.md", project_root)
+        assert len(links) == 0
+
+    def test_multiple_backtick_spans(self, project_root):
+        content = "`[a](C:/a.md)` and `[b](C:/b.md)` but [Real](TOOLS.md)"
+        links = extract_md_links(content, "MEMORY.md", project_root)
+        assert len(links) == 1
+        assert links[0].target == "TOOLS.md"
+
+    def test_table_cell_code_span_still_skipped(self, project_root):
+        content = "| `[文本](file:///C:/路径.md)` | ✅ |"
+        links = extract_md_links(content, "MEMORY.md", project_root)
+        assert len(links) == 0
