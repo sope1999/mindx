@@ -636,7 +636,24 @@ function highlightInTree(path){
   if(target){target.classList.add('selected');target.scrollIntoView({block:'nearest',behavior:'smooth'});}
 }
 function selectFile(path){S.selectedFile=path;bumpReadCount(path);fetchFileDetail(path).then(d=>renderDetail(d));try{S.netRefTree?.selectNodes([path]);S.netRefTree?.focus(path,{scale:1.2,animation:true});}catch(e){}try{S.netDirTree?.selectNodes([path]);S.netDirTree?.focus(path,{scale:1.2,animation:true});}catch(e){}try{S.netDepGraph?.selectNodes([path]);S.netDepGraph?.focus(path,{scale:1.2,animation:true});}catch(e){}}
-async function fetchFileDetail(path){const r=await fetch('/api/file/'+encodeURIComponent(path));return r.json();}
+async function fetchSilencedBrokenLinks(){const r=await fetch('/api/silenced-links');return r.json();}
+async function silenceBrokenLink(target) {
+  const r = await fetch('/api/silenced-links/silence', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({target})
+  });
+  return r.json();
+}
+async function unsilenceBrokenLink(target) {
+  const r = await fetch('/api/silenced-links/unsilence', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({target})
+  });
+  return r.json();
+}
+async function fetchFileDetail(path){const [detail,silenced]=await Promise.all([fetch('/api/file/'+encodeURIComponent(path)).then(r=>r.json()),fetchSilencedBrokenLinks().catch(()=>[])]);detail.silenced_links=silenced||[];return detail;}
+async function toggleBrokenLinkSilence(target,silenced){const r=silenced?await unsilenceBrokenLink(target):await silenceBrokenLink(target);if(r.success&&S.selectedFile)fetchFileDetail(S.selectedFile).then(d=>renderDetail(d));}
+function escapeHtml(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 function renderDetail(data){
   document.getElementById('detail-empty').style.display='none';document.getElementById('detail-content').style.display='block';
   document.getElementById('detail-path').textContent=baseName(data.path);
@@ -646,7 +663,7 @@ function renderDetail(data){
   const parents=data.dependencies?.referenced_by||[];const children=data.dependencies?.references||[];
   document.getElementById('detail-parents').innerHTML=parents.length?parents.map(p=>'<div class="ref-link" onclick="selectFile(\''+p.path+'\')">'+baseName(p.path)+' <span class="ref-type">'+p.link_type+'</span></div>').join(''):'<span class="dim">无</span>';
   document.getElementById('detail-children').innerHTML=children.length?children.map(c=>'<div class="ref-link" onclick="selectFile(\''+c.path+'\')">'+baseName(c.path)+' <span class="ref-type">'+c.link_type+'</span></div>').join(''):'<span class="dim">无</span>';
-  const issues=data.issues||[];document.getElementById('detail-issues-section').style.display=issues.length?'':'none';document.getElementById('detail-issues').innerHTML=issues.map(i=>'<div class="issue-item">⚠ '+i.detail+'</div>').join('');
+  const silencedLinks=new Set(data.silenced_links||[]);const issues=data.issues||[];document.getElementById('detail-issues-section').style.display=issues.length?'':'none';document.getElementById('detail-issues').innerHTML=issues.map(i=>{const isBroken=i.type==='broken_link'&&i.target;const silenced=isBroken&&silencedLinks.has(i.target);const btn=isBroken?' <button class="btn btn-xs silence-btn" data-target="'+escapeHtml(i.target)+'" data-silenced="'+silenced+'" title="'+(silenced?'取消静音':'静音')+'" onclick="event.stopPropagation();toggleBrokenLinkSilence(this.dataset.target,this.dataset.silenced===\'true\')">'+(silenced?'🔈':'🔇')+'</button>':'';return '<div class="issue-item">⚠ '+escapeHtml(i.detail)+btn+'</div>';}).join('');
   document.getElementById('detail-links').innerHTML=data.links&&data.links.length?data.links.map(l=>'<div class="ref-link">['+l.anchor+']('+l.target+') <span class="ref-type">'+l.context+'</span>'+(l.is_external?' <span class="ext-tag">外部</span>':'')+'</div>').join(''):'<span class="dim">无</span>';
   // Update right panel
   document.getElementById('file-info-empty').style.display='none';document.getElementById('file-info-content').style.display='block';

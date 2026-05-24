@@ -93,12 +93,29 @@ def tool_list_projects() -> dict:
 def tool_switch_project(name: str) -> dict:
     """切换到指定项目。调用其他工具前必须先选择项目"""
     global CURRENT_PROJECT
+    # Validate project exists in config first
+    matched = None
     for proj in CONFIG["projects"]:
         if proj["name"] == name:
-            CURRENT_PROJECT = name
-            return {"project": name, "root": proj["root"]}
-    available = [p["name"] for p in CONFIG["projects"]]
-    return {"_error": f"项目 '{name}' 不存在。可用: {available}"}
+            matched = proj
+            break
+    if matched is None:
+        available = [p["name"] for p in CONFIG["projects"]]
+        return {"_error": f"项目 '{name}' 不存在。可用: {available}"}
+
+    # Sync with Flask server so its active_project stays in sync
+    result = _http_post("/api/projects/select", {"name": name})
+    if "_error" in result:
+        # Flask server unreachable — do NOT set CURRENT_PROJECT, otherwise
+        # MCP thinks the switch succeeded but Flask still uses the old project.
+        return {"_error": f"项目 '{name}' 本地验证通过，但远程服务切换失败: {result['_error']}"}
+    if result.get("success") is False:
+        msg = result.get("message") or result.get("error") or str(result)
+        return {"_error": f"项目 '{name}' 远程切换失败: {msg}"}
+
+    # Remote switch succeeded — update local state
+    CURRENT_PROJECT = name
+    return {"project": name, "root": matched["root"]}
 
 
 def tool_list_files(name_pattern: str = None) -> dict:
@@ -236,6 +253,37 @@ def tool_get_change_log(limit: int = 50) -> dict:
     return {"changes": changes, "count": len(changes)}
 
 
+def tool_list_silenced_links() -> dict:
+    """获取当前项目所有已静默的断链目标"""
+    _ensure_project()
+    data = _http_get("/api/silenced-links")
+    if "_error" in data:
+        return data
+    return {"silenced_links": data if isinstance(data, list) else data.get("silenced_links", [])}
+
+
+def tool_silence_link(target: str) -> dict:
+    """静默一个断链目标（将其从断链列表中隐藏）"""
+    _ensure_project()
+    data = _http_post("/api/silenced-links/silence", {"target": target})
+    if "_error" in data:
+        return data
+    if not data.get("success"):
+        return {"_error": data.get("error", "操作失败")}
+    return {"success": True, "target": target, "added": data.get("added", True)}
+
+
+def tool_unsilence_link(target: str) -> dict:
+    """取消静默一个断链目标"""
+    _ensure_project()
+    data = _http_post("/api/silenced-links/unsilence", {"target": target})
+    if "_error" in data:
+        return data
+    if not data.get("success"):
+        return {"_error": data.get("error", "操作失败")}
+    return {"success": True, "target": target, "removed": data.get("removed", True)}
+
+
 def tool_rename_file(path: str, new_name: str) -> dict:
     """重命名文件并自动更新所有引用"""
     _ensure_project()
@@ -278,6 +326,9 @@ TOOL_MAP = {
     "get_sync_suggestions": tool_get_sync_suggestions,
     "get_change_log": tool_get_change_log,
     "rename_file": tool_rename_file,
+    "list_silenced_links": tool_list_silenced_links,
+    "silence_link": tool_silence_link,
+    "unsilence_link": tool_unsilence_link,
 }
 
 
@@ -382,6 +433,29 @@ async def main():
                 inputSchema={
                     "type": "object",
                     "properties": {"limit": {"type": "integer"}},
+                },
+            ),
+            Tool(
+                name="list_silenced_links",
+                description="获取当前项目所有已静默的断链目标",
+                inputSchema={"type": "object", "properties": {}},
+            ),
+            Tool(
+                name="silence_link",
+                description="静默一个断链目标，将其从全局断链列表中隐藏",
+                inputSchema={
+                    "type": "object",
+                    "properties": {"target": {"type": "string"}},
+                    "required": ["target"],
+                },
+            ),
+            Tool(
+                name="unsilence_link",
+                description="取消静默一个断链目标",
+                inputSchema={
+                    "type": "object",
+                    "properties": {"target": {"type": "string"}},
+                    "required": ["target"],
                 },
             ),
             Tool(
