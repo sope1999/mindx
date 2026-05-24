@@ -348,23 +348,28 @@ def api_file_detail(file_path: str):
     proj = get_project_config(_config, active_project)
     project_root = Path(proj["root"]) if proj else Path(".")
     issues = []
+    seen_targets = set()
     for link in (info.links if info else []):
         if link.is_external:
             node = engine.graph.nodes.get(link.target, {})
             if node.get("broken") or node.get("absent"):
-                issues.append({
-                    "type": "broken_external_link",
-                    "target": link.target,
-                    "detail": f"外部链接目标不存在: {link.target}",
-                })
+                if link.target not in seen_targets:
+                    seen_targets.add(link.target)
+                    issues.append({
+                        "type": "broken_external_link",
+                        "target": link.target,
+                        "detail": f"外部链接目标不存在: {link.target}",
+                    })
             continue
         target_path = link.target
         if not (project_root / target_path).exists():
-            issues.append({
-                "type": "broken_link",
-                "target": target_path,
-                "detail": f"链接目标不存在: {target_path}",
-            })
+            if target_path not in seen_targets:
+                seen_targets.add(target_path)
+                issues.append({
+                    "type": "broken_link",
+                    "target": target_path,
+                    "detail": f"链接目标不存在: {target_path}",
+                })
     result["issues"] = issues
 
     return jsonify(result)
@@ -455,27 +460,34 @@ def api_broken_links():
         return jsonify({"error": "Engine not ready"}), 500
 
     broken_links = []
+    seen = set()
     for file_path, info in engine.files.items():
         for link in info.links:
             if link.is_external:
                 node = engine.graph.nodes.get(link.target, {})
                 if node.get("broken") or node.get("absent"):
+                    key = (file_path, link.target)
+                    if key not in seen:
+                        seen.add(key)
+                        broken_links.append({
+                            "file": file_path,
+                            "target": link.target,
+                            "link_type": link.link_type,
+                            "context": link.context,
+                            "is_external": True,
+                            "external_status": "broken",
+                        })
+                continue
+            if not (project_root / link.target).exists():
+                key = (file_path, link.target)
+                if key not in seen:
+                    seen.add(key)
                     broken_links.append({
                         "file": file_path,
                         "target": link.target,
                         "link_type": link.link_type,
                         "context": link.context,
-                        "is_external": True,
-                        "external_status": "broken",
                     })
-                continue
-            if not (project_root / link.target).exists():
-                broken_links.append({
-                    "file": file_path,
-                    "target": link.target,
-                    "link_type": link.link_type,
-                    "context": link.context,
-                })
 
     total_count = len(broken_links)
     silenced = engine.get_silenced_links()

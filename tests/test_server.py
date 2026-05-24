@@ -211,6 +211,44 @@ class TestBrokenLinks:
         data = resp.get_json()
         assert any(bl.get("is_external") for bl in data["broken_links"])
 
+    def test_broken_links_deduped_by_file_and_target(self, app):
+        """Duplicate broken links from same file to same target are deduplicated."""
+        import server
+
+        _select_project(app)
+        engine = server.engines[server.active_project]
+        project_root = engine.project_root
+        # Write a file with two links to the same missing target (e.g. with anchor and title)
+        (project_root / "DUP_BROKEN.md").write_text(
+            "[A](missing.md#anchor) [B](missing.md \"title\")", encoding="utf-8"
+        )
+        engine.scan_all()
+
+        resp = app.get("/api/broken-links")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        dup_broken = [bl for bl in data["broken_links"] if bl["file"] == "DUP_BROKEN.md"]
+        targets = [bl["target"] for bl in dup_broken]
+        assert targets.count("missing.md") == 1, f"Expected dedup, got targets: {targets}"
+
+    def test_file_detail_issues_deduped_by_target(self, app):
+        """Duplicate broken link issues in file detail are deduplicated by target."""
+        import server
+
+        _select_project(app)
+        engine = server.engines[server.active_project]
+        project_root = engine.project_root
+        (project_root / "DUP_ISSUES.md").write_text(
+            "[A](gone.md#s1) [B](gone.md#s2)", encoding="utf-8"
+        )
+        engine.scan_all()
+
+        resp = app.get("/api/file/DUP_ISSUES.md")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        broken_targets = [i["target"] for i in data.get("issues", []) if i["type"] == "broken_link"]
+        assert broken_targets.count("gone.md") == 1, f"Expected dedup in issues, got: {broken_targets}"
+
     def test_file_detail_falls_back_to_external_graph_node(self, app):
         import server
 
