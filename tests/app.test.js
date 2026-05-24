@@ -551,6 +551,82 @@ describe('computeReachable', () => {
 });
 
 // ═══════════════════════════════════════════
+// 13b. computeRefLevels
+// ═══════════════════════════════════════════
+describe('computeRefLevels', () => {
+  test('normal DAG: root level 0, children level 1+', () => {
+    const graphData = {
+      nodes: [],
+      edges: [
+        { from: 'MEMORY.md', to: 'a.md' },
+        { from: 'MEMORY.md', to: 'b.md' },
+        { from: 'a.md', to: 'c.md' },
+      ],
+    };
+    const visible = new Set(['MEMORY.md', 'a.md', 'b.md', 'c.md']);
+    const levels = computeRefLevels(graphData, visible);
+    expect(levels['MEMORY.md']).toBe(0);
+    expect(levels['a.md']).toBe(1);
+    expect(levels['b.md']).toBe(1);
+    expect(levels['c.md']).toBe(2);
+  });
+
+  test('cycle nodes get level based on best incoming edge', () => {
+    // opencode.md (level 1) references both cycle members
+    // cycle: projects ↔ sessions
+    const graphData = {
+      nodes: [],
+      edges: [
+        { from: 'MEMORY.md', to: 'opencode.md' },
+        { from: 'opencode.md', to: 'opencode-projects.md' },
+        { from: 'opencode.md', to: 'opencode-sessions.md' },
+        { from: 'opencode-projects.md', to: 'opencode-sessions.md' },
+        { from: 'opencode-sessions.md', to: 'opencode-projects.md' },
+      ],
+    };
+    const visible = new Set(['MEMORY.md', 'opencode.md', 'opencode-projects.md', 'opencode-sessions.md']);
+    const levels = computeRefLevels(graphData, visible);
+    expect(levels['MEMORY.md']).toBe(0);
+    expect(levels['opencode.md']).toBe(1);
+    // Both cycle nodes should be level 2 (from opencode.md level 1 + 1)
+    expect(levels['opencode-projects.md']).toBe(2);
+    expect(levels['opencode-sessions.md']).toBe(2);
+  });
+
+  test('isolated nodes get level -1', () => {
+    const graphData = {
+      nodes: [],
+      edges: [
+        { from: 'MEMORY.md', to: 'a.md' },
+      ],
+    };
+    const visible = new Set(['MEMORY.md', 'a.md', 'orphan.md']);
+    const levels = computeRefLevels(graphData, visible);
+    expect(levels['MEMORY.md']).toBe(0);
+    expect(levels['a.md']).toBe(1);
+    expect(levels['orphan.md']).toBe(-1);
+  });
+
+  test('cycle with no external incoming edges defaults to level 0', () => {
+    // Pure cycle with no root reaching it
+    const graphData = {
+      nodes: [],
+      edges: [
+        { from: 'x.md', to: 'y.md' },
+        { from: 'y.md', to: 'x.md' },
+      ],
+    };
+    const visible = new Set(['MEMORY.md', 'x.md', 'y.md']);
+    const levels = computeRefLevels(graphData, visible);
+    // MEMORY.md has no edges at all → isolated → -1
+    expect(levels['MEMORY.md']).toBe(-1);
+    // x and y are in a cycle with no external incoming edges, bestLevel=undefined, origIndegree>0 → 0
+    expect(levels['x.md']).toBe(0);
+    expect(levels['y.md']).toBe(0);
+  });
+});
+
+// ═══════════════════════════════════════════
 // 14. External reference display status
 // ═══════════════════════════════════════════
 describe('external reference display status', () => {

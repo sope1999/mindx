@@ -490,16 +490,25 @@ function computeRefLevels(graphData, visiblePaths) {
     }
   }
   const indegree = {};
+  const origIndegree = {};
   const adj = {};
   for (const p of visiblePaths) { indegree[p] = 0; adj[p] = []; }
   for (const e of gEdges) {
     adj[e.from] = (adj[e.from] || []); adj[e.from].push(e.to);
     indegree[e.to] = (indegree[e.to] || 0) + 1;
   }
+  for (const [n, d] of Object.entries(indegree)) { origIndegree[n] = d; }
   const levels = {};
+  const bestLevel = {}; // track max level for cycle nodes
   let queue = [];
   for (const [n, d] of Object.entries(indegree)) {
-    if (d === 0) { queue.push(n); levels[n] = 0; }
+    // Isolated nodes (no incoming AND no outgoing) get -1, not queued
+    if (d === 0 && (!adj[n] || adj[n].length === 0)) {
+      levels[n] = -1;
+    } else if (d === 0) {
+      queue.push(n);
+      levels[n] = 0;
+    }
   }
   while (queue.length) {
     const next = [];
@@ -507,8 +516,9 @@ function computeRefLevels(graphData, visiblePaths) {
       for (const child of (adj[n] || [])) {
         if (!(child in levels)) {
           indegree[child]--;
+          bestLevel[child] = Math.max(bestLevel[child] || 0, (levels[n] || 0) + 1);
           if (indegree[child] === 0) {
-            levels[child] = (levels[n] || 0) + 1;
+            levels[child] = bestLevel[child];
             next.push(child);
           }
         }
@@ -516,17 +526,11 @@ function computeRefLevels(graphData, visiblePaths) {
     }
     queue = next;
   }
-  // Isolated nodes (never processed by Kahn, no incoming AND no outgoing edges) → level -1
-  for (const [n, d] of Object.entries(indegree)) {
-    if (!(n in levels) && d === 0 && (!adj[n] || adj[n].length === 0)) {
-      levels[n] = -1;
-    }
-  }
   for (const p of visiblePaths) {
     if (!(p in levels)) {
-      // Default for unreachable: isolated if no edges, else root
-      const hasOut = adj[p] && adj[p].length > 0;
-      levels[p] = hasOut ? 0 : -1;
+      // Cycle nodes (had incoming edges): use bestLevel if available, else 0
+      // Truly isolated nodes (no edges at all): -1
+      levels[p] = bestLevel[p] !== undefined ? bestLevel[p] : (origIndegree[p] > 0 ? 0 : -1);
     }
   }
   return levels;
