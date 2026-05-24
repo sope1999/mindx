@@ -38,29 +38,31 @@ mindx 是一个通用 .md 文件关系可视化工具，支持多项目管理。
 
 ```
 C:\SOFT\AI\mindx\
-├── server.py            # Flask 主服务 + SocketIO + 多项目 API
-├── parser.py            # [→](path) 链接解析 + 外部链接检测
-├── graph_engine.py      # NetworkX 依赖图 + 隐式引用 + 通用扫描
+├── server.py            # Flask 主服务 + SocketIO + 多项目 API + 断链静默
+├── mcp_server.py        # MCP stdio 服务，HTTP 代理到 Web API
+├── parser.py            # [→](path) 链接解析 + file:/// 外部链接检测
+├── graph_engine.py      # NetworkX 依赖图 + 外部状态 + 通用扫描
 ├── watcher.py           # watchdog 文件监听 + 项目切换
 ├── config.py            # config.yaml 管理 + 全局常量
 ├── config.yaml          # 多项目配置（用户态）
 ├── requirements.txt     # Python 依赖（含 pyyaml）
+├── requirements-mcp.txt # MCP 依赖
 ├── templates/
 │   └── index.html       # 前端入口（含项目标签栏）
 ├── static/
 │   ├── css/style.css    # 暗色主题样式（含项目标签/模态框/外部链接样式）
 │   └── js/app.js        # 前端主逻辑（多项目/目录模式/外部链接）
-├── start-mindx.ps1      # Windows 启动脚本
+├── start-mindx.ps1      # Windows 启动脚本（含启动失败检测）
 ├── stop-mindx.ps1       # Windows 停止脚本
 ├── 新需求.md             # v4.0 新需求文档
 ├── mindx-view-spec-v3.md
 ├── OPENCLAW_GUIDE.md
-└── DEVELOPMENT.md       # v1→v4.0 完整开发历史 + Bug 表
+└── DEVELOPMENT.md       # v1→v4.6 完整开发历史 + Bug 表
 ```
 
-## 核心模块说明（v4.0）
+## 核心模块说明（v4.6）
 
-### server.py（~1044 行）
+### server.py（~1106 行）
 - 项目管理 API：`/api/projects`（列表）、`/api/projects/add`、`/api/projects/remove`、`/api/projects/select`
 - 数据 API：`/api/status`、`/api/files`、`/api/file/<path>`、`/api/graph`、`/api/scan`、`/api/changes`、`/api/sync-check`
 - 外部管理 API：`/api/external/add`、`/api/external/remove`、`/api/external/list`
@@ -70,19 +72,19 @@ C:\SOFT\AI\mindx\
 - 多引擎 + 多 watcher 字典管理，按项目名索引
 - `_init_project()` 创建引擎时传入 `external_paths`；`_persist_external`/`_unpersist_external` 同步引擎路径
 
-### config.py（~199 行）
+### config.py（~227 行）
 - `config.yaml` 读写：`load_config()`、`save_config()`
 - 项目管理：`add_project()`（含重名后缀处理）、`remove_project()`、`get_project_config()`
 - 全局常量：`FILE_TYPES`、`IGNORE_PATTERNS`、`SYNC_RULES`
 
-### parser.py（~228 行）
+### parser.py（~282 行）
 - `parse_file(abs_path, project_root)` → FileInfo
 - `normalize_file_uri()` — 将 `file:///C:/...` 转为本地绝对路径（含 `%20` 解码、anchor/title 剥离、UNC 保留）
 - `resolve_link_target()` 返回 `(path, is_external)` 元组，`file://` 链接自动标记 `is_external=True`
 - `Link.is_file_uri` 字段区分 `file://` 链接
 - `extract_md_links()` 不跳过 `file://`（只跳过 `http`）
 
-### graph_engine.py（~735 行）
+### graph_engine.py（~737 行）
 - `GraphEngine(project_root, external_paths)` — 接受任意项目根目录 + 外部路径边界
 - `_is_within_external_paths()` — 判断绝对路径是否在挂载范围内
 - `_external_node_status()` — 返回 `(exists, mounted, status)` 三元组
@@ -92,20 +94,31 @@ C:\SOFT\AI\mindx\
 - `poll_external_files()` — 只轮询已挂载的外部文件，跳过未挂载和网络路径
 - `_is_network_path()` — 拒绝 UNC / `\\` / `file:////` 网络路径
 
+### mcp_server.py（~530 行）
+- MCP stdio 服务，通过 HTTP 调用 Flask API
+- 16 个工具，覆盖项目、文件、引用、断链、历史、扫描、重命名和断链静默
+- 不复制图引擎逻辑，后端返回外部状态字段时原样透传
+
 ### watcher.py（~157 行）
 - `FileWatcher(project_root, on_change)` — 监听任意项目目录
 - `restart(new_root, new_callback)` — 切换监听目标
 
-### 前端（~1040 行 JS + ~290 行 HTML + ~950 行 CSS）
+### 前端（~977 行 JS + ~340 行 HTML + ~1054 行 CSS）
 - **多项目**：标签栏（最多 4 个）+ 下拉列表 + 添加/删除/切换 + 路径失效处理
 - **文件树**：目录模式（引用层级 + 📁 自动分组合并）+ 引用模式（纯引用层级）
 - **记忆树图**：目录模式（UD 层级树形图）+ 引用树模式（vis.js 力导向）
-- **依赖图**：力导向图 + 外部链接虚线标注
+- **依赖图**：力导向图 + 外部链接虚线标注 + broken 外部节点隔离
 - **右键菜单**：隐藏/取消隐藏、移除/恢复
 - **批量操作**：多选模式 ☑ → 一键隐藏
 - **项目设置**：⚙ 模态弹窗（全量/引用模式、根文件、排除目录）
 - **联动**：三视图同步选中 + 过滤联动
 - **持久化**：localStorage 按项目命名空间
+
+### start-mindx.ps1（~69 行）
+- 后台启动 `server.py`，stdout 和 stderr 写入 `%TEMP%\mindx-startup.log`
+- 启动后等待端口绑定，再请求 `/api/status` 验证服务可用
+- Python 进程未存活时打印最近 20 行日志并退出 1
+- 端口占用但 API 无响应时保留日志路径用于诊断
 
 ## 版本历史
 
@@ -139,9 +152,15 @@ C:\SOFT\AI\mindx\
 - 安全：UNC / `\\` / `file:////` 网络路径在所有层面被拒绝，`poll_external_files()` 只轮询已挂载文件
 - `/api/broken-links` 新增外部断链报告；`/api/file/<path>` 对外部节点回退到 graph node 数据
 - UI 外部标签区分三种状态：`挂`（mounted）/ `叶`（unmounted）/ `断`（broken）；挂载但未被引用的外部文件保持隐藏
+- 图 Tab 新增“外部”过滤复选框，和文件树过滤状态同步
+- 引用树里的外部节点使用虚线边框，和项目内节点区分
+- broken 外部节点不进入引用树图、目录树图和依赖图，只保留在断链诊断和文件详情中
+- `/api/broken-links` 对同一 `(file, target)` 断链去重，避免外部递归解析重复上报
+- 外部断链详情补齐 🔈/🔇 静默按钮，和内部断链使用同一静默流程
+- `start-mindx.ps1` 增加启动失败检测：重定向日志、检查端口绑定、请求 `/api/status`，崩溃时输出最近日志并退出失败
 - MCP `get_file_info` 透传后端外部状态字段（`is_external`、`mounted`、`external_status`、`target_exists`、`broken`、`abs_path`）
 - MCP 工具总数 13→16（新增 `list_silenced_links`/`silence_link`/`unsilence_link`）
-- 测试：新增 57 个测试（parser 14 + graph 11 + server 3 + MCP 1 + JS 6），全量 134 passed
+- 测试覆盖：136 个 Python 测试 + 77 个前端 JS 测试
 
 ### v4.3（2026-05-17）
 - 设置持久化迁移至 config.yaml（分类覆写、排除目录、显示模式）
