@@ -624,3 +624,29 @@ AI 工具 ←─stdio─→ mcp_server.py ←─HTTP─→ server.py:5020
 - 前端：文件详情面板每个断链旁 🔈/🔇 切换按钮
 
 （v4.5 完）
+
+---
+
+## 十四、v4.6：file:/// 外部引用语义
+
+### 设计边界
+
+| 项 | 说明 |
+|----|------|
+| `file:///` | Markdown 链接里的本机路径写法，解析后仍是外部路径引用，不新增挂载模型 |
+| `external_paths` | 手动挂载边界，只表示用户允许 mindx 追踪的外部文件或目录 |
+| 可达性 | 挂载外部文件或目录只有被工作区根文件、引用根或项目内文件链路触达时才出现在引用链上 |
+| 未挂载外部目标 | 如果文件存在，但不在 `external_paths` 中，显示为叶子外部引用节点 |
+| 断开的外部目标 | 如果文件不存在，进入断链列表，与内部断链一起诊断 |
+
+### MCP 调整
+
+- `get_file_info` 继续过滤无关字段，但会透传后端提供的 `abs_path`、`is_external`、`mounted`、`external_status`、`external_state`、`target_exists`、`broken`、`issues`
+- `get_references`、`get_backlinks`、`get_dependency_graph`、`get_broken_links` 不重写载荷，后端若提供外部挂载、未挂载或断链状态，MCP 原样返回
+- MCP 不推断外部状态，避免在后端状态字段缺失时声明未实现的数据
+
+### 文档约定
+
+- 用户文档必须说明 `file:///` 只是链接语法
+- AI 手册必须说明 `external_paths` 的解析边界和可达性显示规则
+- 断链文档同时覆盖内部断链和外部断链
