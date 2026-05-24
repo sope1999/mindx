@@ -614,4 +614,13 @@ AI 工具 ←─stdio─→ mcp_server.py ←─HTTP─→ server.py:5020
 | 28 | v4.5 | 重复忽略模式 | 冗余 | 移除（`bca378a`） |
 | 29 | v4.5 | watchdog 反馈环 | 自写文件触发 | `_server_writing` 标志（`bca378a`） |
 
+### 断链静默
+
+- 新增断链静默功能：文档示例中的占位符链接（如 `[text](path)`）可被静默，不再显示为断链
+- `.mindx/silenced_links.json` 持久化静默列表，原子写入
+- API：`GET /api/silenced-links`、`POST .../silence`、`POST .../unsilence`
+- `/api/broken-links` 返回 `total_count`（全部）+ `count`（过滤后）
+- MCP 新增 `list_silenced_links`、`silence_link`、`unsilence_link` 工具（共 16 个）
+- 前端：文件详情面板每个断链旁 🔈/🔇 切换按钮
+
 （v4.5 完）
