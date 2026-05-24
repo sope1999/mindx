@@ -554,14 +554,17 @@ function renderMemoryRefTree(container){
   for(const f of getDisplayFiles()){
     if(!visiblePaths.has(f.path))continue;
     const d=(dagLevels[f.path]??0)+shift;
-    nodes.push({
+    const isExt=isExternalFile(f.path);
+    const nodeObj={
       id:f.path,label:baseName(f.path),
       color:{background:getNodeColor(f.type,f.path),border:getNodeBorderColor(),highlight:{background:getNodeColor(f.type,f.path),border:'#fff'}},
       font:{color:getFontColor(),size:10,face:'monospace'},
       shape:'box',margin:5,
       title:f.path+'\n'+getFtypeLabel(f.type)+(getExternalStatus(f.path)?'\n'+getExternalStatusLabel(getExternalStatus(f.path)):''),
       level:d
-    });
+    };
+    if(isExt){nodeObj.shapeProperties={borderDashes:[5,5]};nodeObj.borderWidth=2;}
+    nodes.push(nodeObj);
     nodeIds.add(f.path);
   }
   
