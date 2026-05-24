@@ -762,3 +762,50 @@ describe('buildRefTree', () => {
     expect(tree[0].path).toBe('MEMORY.md');
   });
 });
+
+// ═══════════════════════════════════════════
+// 19. renderDetail silence button for broken_external_link
+// ═══════════════════════════════════════════
+describe('renderDetail silence button for external broken links', () => {
+  test('shows silence button for broken_external_link issues', () => {
+    const data = {
+      path: 'test.md',
+      type: 'md',
+      exists: true,
+      size: 100,
+      last_modified: null,
+      abs_path: '/tmp/test.md',
+      dependencies: { referenced_by: [], references: [] },
+      links: [],
+      silenced_links: [],
+      issues: [
+        { type: 'broken_external_link', target: 'C:/ext/missing.md', detail: '外部链接目标不存在: C:/ext/missing.md' },
+      ],
+    };
+    renderDetail(data);
+    const issuesHtml = document.getElementById('detail-issues').innerHTML;
+    expect(issuesHtml).toContain('silence-btn');
+    expect(issuesHtml).toContain('C:/ext/missing.md');
+  });
+
+  test('silence button still works for broken_link issues', () => {
+    const data = {
+      path: 'test.md',
+      type: 'md',
+      exists: true,
+      size: 100,
+      last_modified: null,
+      abs_path: '/tmp/test.md',
+      dependencies: { referenced_by: [], references: [] },
+      links: [],
+      silenced_links: [],
+      issues: [
+        { type: 'broken_link', target: 'missing.md', detail: '链接目标不存在: missing.md' },
+      ],
+    };
+    renderDetail(data);
+    const issuesHtml = document.getElementById('detail-issues').innerHTML;
+    expect(issuesHtml).toContain('silence-btn');
+    expect(issuesHtml).toContain('missing.md');
+  });
+});
