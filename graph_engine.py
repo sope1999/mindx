@@ -5,6 +5,7 @@ from typing import List, Dict, Set, Optional, Tuple
 from dataclasses import dataclass, field
 from datetime import datetime
 
+import json
 import threading
 
 import networkx as nx
@@ -42,11 +43,14 @@ class GraphEngine:
         self.files: Dict[str, FileInfo] = {}
         self.change_log: List[ChangeEvent] = []
         self._max_changes = 200
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
         self._history_dir = self.project_root / ".mindx"
         self._history_file = self._history_dir / "history.json"
         self._history: List[dict] = []
         self._load_history()
+        self._silenced_file = self._history_dir / "silenced_links.json"
+        self._silenced_links: List[str] = []
+        self._load_silenced()
 
     def _load_history(self):
         """Load history from disk, filtering out entries older than 3 days."""
@@ -93,6 +97,53 @@ class GraphEngine:
         with open(tmp, "w", encoding="utf-8") as f:
             _json.dump(self._history, f, ensure_ascii=False, indent=2, default=str)
         os.replace(tmp, str(self._history_file))
+
+    def _load_silenced(self):
+        """Load silenced link targets from disk."""
+        if not self._history_dir.exists():
+            self._history_dir.mkdir(exist_ok=True)
+        if self._silenced_file.exists():
+            try:
+                data = json.loads(self._silenced_file.read_text(encoding="utf-8"))
+                if isinstance(data, list):
+                    self._silenced_links = [str(s) for s in data]
+                else:
+                    print("[mindx] Warning: silenced_links.json is not a list, using empty list")
+                    self._silenced_links = []
+            except Exception:
+                print("[mindx] Warning: silenced_links.json is corrupted, using empty list")
+                self._silenced_links = []
+        else:
+            self._silenced_links = []
+
+    def _save_silenced(self):
+        """Persist silenced link targets to disk using atomic write."""
+        import os
+        self._history_dir.mkdir(exist_ok=True)
+        tmp = str(self._silenced_file) + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(self._silenced_links, f, ensure_ascii=False, indent=2)
+        os.replace(tmp, str(self._silenced_file))
+
+    def get_silenced_links(self) -> List[str]:
+        """Return the list of silenced link targets."""
+        return self._silenced_links
+
+    def silence_link(self, target: str) -> bool:
+        """Add a target to the silenced list. Returns True if added, False if already present."""
+        if target in self._silenced_links:
+            return False
+        self._silenced_links.append(target)
+        self._save_silenced()
+        return True
+
+    def unsilence_link(self, target: str) -> bool:
+        """Remove a target from the silenced list. Returns True if removed, False if not present."""
+        if target not in self._silenced_links:
+            return False
+        self._silenced_links.remove(target)
+        self._save_silenced()
+        return True
 
     def get_history(self, days: int = 3, type_filter: str = "all") -> dict:
         """Return persisted history entries filtered by days and type."""

@@ -439,7 +439,54 @@ def api_broken_links():
                     "context": link.context,
                 })
 
-    return jsonify({"broken_links": broken_links, "count": len(broken_links)})
+    total_count = len(broken_links)
+    silenced = engine.get_silenced_links()
+    broken_links = [bl for bl in broken_links if bl["target"] not in silenced]
+
+    return jsonify({"broken_links": broken_links, "count": len(broken_links), "total_count": total_count})
+
+
+@app.route("/api/silenced-links")
+def api_silenced_links():
+    """Return the list of silenced link targets for the active project."""
+    if active_project is None:
+        return jsonify([])
+    engine = engines.get(active_project)
+    if engine is None:
+        return jsonify([])
+    return jsonify(engine.get_silenced_links())
+
+
+@app.route("/api/silenced-links/silence", methods=["POST"])
+def api_silence_link():
+    """Silence a broken-link target so it no longer appears in the global list."""
+    if active_project is None:
+        return jsonify({"success": False, "error": "No active project"}), 400
+    engine = engines.get(active_project)
+    if engine is None:
+        return jsonify({"success": False, "error": "Engine not ready"}), 500
+    data = request.get_json(force=True)
+    target = data.get("target", "").strip()
+    if not target:
+        return jsonify({"success": False, "error": "target is required"}), 400
+    result = engine.silence_link(target)
+    return jsonify({"success": True, "added": result})
+
+
+@app.route("/api/silenced-links/unsilence", methods=["POST"])
+def api_unsilence_link():
+    """Un-silence a broken-link target so it reappears in the global list."""
+    if active_project is None:
+        return jsonify({"success": False, "error": "No active project"}), 400
+    engine = engines.get(active_project)
+    if engine is None:
+        return jsonify({"success": False, "error": "Engine not ready"}), 500
+    data = request.get_json(force=True)
+    target = data.get("target", "").strip()
+    if not target:
+        return jsonify({"success": False, "error": "target is required"}), 400
+    result = engine.unsilence_link(target)
+    return jsonify({"success": True, "removed": result})
 
 
 @app.route("/api/sync-check")
