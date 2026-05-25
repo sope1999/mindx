@@ -13,19 +13,29 @@ from config import IGNORE_PATTERNS
 class MindxEventHandler(FileSystemEventHandler):
     """Handles file system events and dispatches to callback."""
 
-    def __init__(self, project_root: Path, on_change: Callable, ignore_patterns: list):
+    def __init__(self, project_root: Path, on_change: Callable,
+                 ignore_patterns: list, excluded_dirs: list = None):
         super().__init__()
         self.project_root = project_root
         self.on_change = on_change
         self.ignore_patterns = ignore_patterns
+        # Normalize excluded_dirs to relative paths for matching
+        self.excluded_dirs: list[str] = []
+        for d in (excluded_dirs or []):
+            try:
+                rel = str(Path(d).relative_to(self.project_root)).replace("\\", "/")
+                self.excluded_dirs.append(rel)
+            except ValueError:
+                self.excluded_dirs.append(str(d).replace("\\", "/"))
         self._debounce: dict = {}  # path -> last event time
 
     def _should_ignore(self, path: str) -> bool:
-        """Check if path matches any ignore pattern."""
+        """Check if path matches any ignore pattern or excluded_dirs."""
         try:
             rel = str(Path(path).relative_to(self.project_root)).replace("\\", "/")
         except ValueError:
             return False
+        # Check ignore patterns
         for pattern in self.ignore_patterns:
             if pattern.endswith("/*"):
                 if rel.startswith(pattern[:-2]):
@@ -37,6 +47,10 @@ class MindxEventHandler(FileSystemEventHandler):
                 if rel.endswith(pattern[1:]):
                     return True
             elif rel.startswith(pattern):
+                return True
+        # Check excluded_dirs
+        for ep in self.excluded_dirs:
+            if rel == ep or rel.startswith(ep + "/"):
                 return True
         return False
 
@@ -99,9 +113,11 @@ class MindxEventHandler(FileSystemEventHandler):
 class FileWatcher:
     """Wraps watchdog Observer for mindx."""
 
-    def __init__(self, project_root: Path, on_change: Callable):
+    def __init__(self, project_root: Path, on_change: Callable,
+                 excluded_dirs: list = None):
         self.project_root = Path(project_root).resolve()
         self.on_change = on_change
+        self.excluded_dirs = excluded_dirs or []
         self.observer: Observer = None
         self._running = False
         self._ignore_patterns = list(IGNORE_PATTERNS)
@@ -120,6 +136,7 @@ class FileWatcher:
             project_root=self.project_root,
             on_change=self._handle_change,
             ignore_patterns=self._ignore_patterns,
+            excluded_dirs=self.excluded_dirs,
         )
         self.observer.schedule(handler, str(self.project_root), recursive=True)
 
@@ -142,12 +159,14 @@ class FileWatcher:
             self.observer.join(timeout=5)
             self._running = False
 
-    def restart(self, new_root: Path, new_on_change: Callable):
+    def restart(self, new_root: Path, new_on_change: Callable, excluded_dirs: list = None):
         """Stop old watcher, reconfigure for new project root, start again."""
         was_running = self._running
         self.stop()
         self.project_root = Path(new_root).resolve()
         self.on_change = new_on_change
+        if excluded_dirs is not None:
+            self.excluded_dirs = excluded_dirs
         self._setup_observer()
         if was_running:
             self.start()

@@ -134,6 +134,74 @@ class TestShouldIgnore:
         assert eng._should_ignore("warning")
 
 
+# ── excluded_paths ────────────────────────────────────────────
+
+class TestExcludedPaths:
+    """Tests for project-level excluded_dirs / excluded_paths."""
+
+    def test_excluded_dir_not_scanned(self, project_root):
+        """Files under an excluded directory must not appear in engine.files."""
+        # Create a file in memory/secrets/ and exclude "memory/secrets"
+        secrets_dir = project_root / "memory" / "secrets"
+        secrets_dir.mkdir(parents=True, exist_ok=True)
+        (secrets_dir / "private.md").write_text("# Secret\n", encoding="utf-8")
+        eng = GraphEngine(project_root, excluded_paths=["memory/secrets"])
+        eng.scan_all()
+        assert "memory/secrets/private.md" not in eng.files
+
+    def test_excluded_file_not_scanned(self, project_root):
+        """An individually excluded file must not appear in engine.files."""
+        eng = GraphEngine(project_root, excluded_paths=["urls.md"])
+        eng.scan_all()
+        assert "urls.md" not in eng.files
+        # Other files should still be present
+        assert "MEMORY.md" in eng.files
+
+    def test_non_excluded_file_is_scanned(self, project_root):
+        """Files outside excluded_dirs must still be scanned normally."""
+        eng = GraphEngine(project_root, excluded_paths=["memory/secrets"])
+        eng.scan_all()
+        assert "MEMORY.md" in eng.files
+        assert "TOOLS.md" in eng.files
+        assert "memory/tools/claude-code.md" in eng.files
+
+    def test_excluded_dir_not_in_graph(self, project_root):
+        """Excluded files must not appear as graph nodes."""
+        secrets_dir = project_root / "memory" / "secrets"
+        secrets_dir.mkdir(parents=True, exist_ok=True)
+        (secrets_dir / "private.md").write_text("# Secret\n", encoding="utf-8")
+        eng = GraphEngine(project_root, excluded_paths=["memory/secrets"])
+        eng.scan_all()
+        assert not eng.graph.has_node("memory/secrets/private.md")
+
+    def test_update_file_ignores_excluded(self, project_root):
+        """update_file must not add a file that's in excluded_paths."""
+        eng = GraphEngine(project_root, excluded_paths=["urls.md"])
+        eng.scan_all()
+        # Try to update the excluded file
+        result = eng.update_file("urls.md", event="modified")
+        # Should return empty list (skipped)
+        assert result == []
+        assert "urls.md" not in eng.files
+
+    def test_should_ignore_with_excluded_paths(self, project_root):
+        """_should_ignore must match excluded_paths correctly."""
+        eng = GraphEngine(project_root, excluded_paths=["memory/secrets", "draft.md"])
+        assert eng._should_ignore("memory/secrets/private.md")
+        assert eng._should_ignore("memory/secrets/nested/deep.md")
+        assert eng._should_ignore("draft.md")
+        # Non-excluded paths should not be ignored
+        assert not eng._should_ignore("MEMORY.md")
+        assert not eng._should_ignore("memory/tools/claude-code.md")
+
+    def test_no_excluded_paths_backward_compat(self, project_root):
+        """Projects without excluded_dirs must work unchanged."""
+        eng = GraphEngine(project_root)
+        eng.scan_all()
+        assert "MEMORY.md" in eng.files
+        assert eng.get_stats()["total_files"] > 0
+
+
 # ── get_history / history persistence ───────────────────────
 
 class TestHistory:

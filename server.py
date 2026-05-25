@@ -59,7 +59,8 @@ def _init_project(name: str, root: Path) -> GraphEngine:
     if name not in engines:
         proj = get_project_config(_config, name)
         ext_paths = proj.get("external_paths", []) if proj else []
-        engines[name] = GraphEngine(root, external_paths=ext_paths)
+        excl_dirs = proj.get("excluded_dirs", []) if proj else []
+        engines[name] = GraphEngine(root, external_paths=ext_paths, excluded_paths=excl_dirs)
     return engines[name]
 
 
@@ -183,12 +184,14 @@ def api_project_select():
         # If project already seen, restart its watcher; otherwise init fresh
         if name in watchers:
             engine = _init_project(name, root)
-            watchers[name].restart(root, _make_on_change(name))
+            excl = proj.get("excluded_dirs", []) if proj else []
+            watchers[name].restart(root, _make_on_change(name), excluded_dirs=excl)
         else:
             engine = _init_project(name, root)
             engine.scan_all()
             _load_externals(name, engine)
-            w = FileWatcher(root, on_change=_make_on_change(name))
+            excl = proj.get("excluded_dirs", []) if proj else []
+            w = FileWatcher(root, on_change=_make_on_change(name), excluded_dirs=excl)
             w.start()
             watchers[name] = w
 
@@ -928,7 +931,9 @@ def init_engine():
     print(f"[mindx] Found {stats['total_files']} files, {stats['total_edges']} edges")
 
     with _project_lock:
-        w = FileWatcher(root, on_change=_make_on_change(name))
+        proj_cfg = get_project_config(_config, name)
+        excl = proj_cfg.get("excluded_dirs", []) if proj_cfg else []
+        w = FileWatcher(root, on_change=_make_on_change(name), excluded_dirs=excl)
         w.start()
         watchers[name] = w
         active_project = name

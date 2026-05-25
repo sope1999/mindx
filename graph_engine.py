@@ -42,13 +42,24 @@ class ChangeEvent:
 class GraphEngine:
     """Manages the dependency graph and sync rule matching."""
 
-    def __init__(self, project_root: Path, external_paths: List[str] = None):
+    def __init__(self, project_root: Path, external_paths: List[str] = None,
+                 excluded_paths: List[str] = None):
         self.project_root = Path(project_root).resolve()
         self.external_paths = [
             str(Path(p).resolve())
             for p in (external_paths or [])
             if not _is_network_path(str(p))
         ]
+        # Normalize excluded paths for matching against relative paths
+        self.excluded_paths: List[str] = []
+        for p in (excluded_paths or []):
+            # Try as absolute path → convert to relative
+            try:
+                rel = str(Path(p).relative_to(self.project_root)).replace("\\", "/")
+                self.excluded_paths.append(rel)
+            except ValueError:
+                # Not relative to project_root; store as-is (may be absolute)
+                self.excluded_paths.append(str(p).replace("\\", "/"))
         self.graph = nx.DiGraph()
         self.files: Dict[str, FileInfo] = {}
         self.change_log: List[ChangeEvent] = []
@@ -201,7 +212,8 @@ class GraphEngine:
             self._build_edges()
 
     def _should_ignore(self, rel_path: str) -> bool:
-        """Check if a relative path matches any IGNORE_PATTERNS."""
+        """Check if a relative path matches any IGNORE_PATTERNS or excluded_paths."""
+        # Check IGNORE_PATTERNS first
         for pattern in IGNORE_PATTERNS:
             if pattern.endswith("/*"):
                 if rel_path.startswith(pattern[:-2]):
@@ -214,6 +226,21 @@ class GraphEngine:
                     return True
             elif rel_path.startswith(pattern):
                 return True
+
+        # Check excluded_paths (project-level exclusions)
+        norm_path = rel_path.replace("\\", "/")
+        for ep in self.excluded_paths:
+            # Exact file match
+            if norm_path == ep:
+                return True
+            # Directory prefix match: excluded path is a dir, file is inside it
+            if norm_path.startswith(ep + "/"):
+                return True
+            # Excluded path may be a dir without trailing slash — match if
+            # the excluded path itself is a prefix of the rel_path
+            if ep.endswith("/"):
+                if norm_path.startswith(ep):
+                    return True
         return False
 
     def _is_within_external_paths(self, abs_path: str) -> bool:
@@ -323,6 +350,9 @@ class GraphEngine:
 
                     # ── internal target (exists under project_root) ──
                     if (self.project_root / target).exists():
+                        # Skip if target is in excluded_paths
+                        if self._should_ignore(target):
+                            continue
                         if target not in self.files:
                             abs_path = self.project_root / target
                             t_info = parse_file(abs_path, self.project_root)
@@ -353,6 +383,10 @@ class GraphEngine:
     def update_file(self, rel_path: str, event: str = "modified"):
         """Handle a file change event. Returns sync suggestions."""
         with self._lock:
+            # Skip files that are in excluded_paths
+            if self._should_ignore(rel_path):
+                return []
+
             abs_path = self.project_root / rel_path
 
             if not abs_path.exists() and event == "modified":
