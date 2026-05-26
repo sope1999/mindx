@@ -158,6 +158,9 @@ C:\SOFT\AI\mindx\
 - `/api/broken-links` 对同一 `(file, target)` 断链去重，避免外部递归解析重复上报
 - 外部断链详情补齐 🔈/🔇 静默按钮，和内部断链使用同一静默流程
 - `start-mindx.ps1` 增加启动失败检测：重定向日志、检查端口绑定、请求 `/api/status`，崩溃时输出最近日志并退出失败
+- 修复：引用树图 Kahn 拓扑排序支持 mutual-reference cycle，循环内节点使用 `bestLevel`，不再掉到 level 0
+- 修复：GraphEngine 扫描阶段应用项目 `excluded_dirs`，排除目录内文件不再被扫描或解析
+- 修复：`stop-mindx.ps1` 正确处理多个 `TIME_WAIT` TCP 连接，确保服务能被稳定停止
 - MCP `get_file_info` 透传后端外部状态字段（`is_external`、`mounted`、`external_status`、`target_exists`、`broken`、`abs_path`）
 - MCP 工具总数 13→16（新增 `list_silenced_links`/`silence_link`/`unsilence_link`）
 - 测试覆盖：136 个 Python 测试 + 77 个前端 JS 测试
