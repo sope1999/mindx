@@ -885,3 +885,51 @@ describe('renderDetail silence button for external broken links', () => {
     expect(issuesHtml).toContain('missing.md');
   });
 });
+
+// ═══════════════════════════════════════════
+// 20. addProject folder picker
+// ═══════════════════════════════════════════
+describe('addProject', () => {
+  test('uses backend folder picker path before browser input fallback', async () => {
+    const picker = document.getElementById('folder-picker');
+    const clickSpy = jest.spyOn(picker, 'click');
+    global.prompt = jest.fn();
+    global.fetch.mockImplementation((url, opts) => {
+      if (url === '/api/pick-folder') return Promise.resolve({ json: () => Promise.resolve({ path: 'C:/Real/Project' }) });
+      if (url === '/api/projects/add') {
+        expect(JSON.parse(opts.body)).toEqual({ root: 'C:/Real/Project' });
+        return Promise.resolve({ json: () => Promise.resolve({ success: true, project: { name: 'Project' } }) });
+      }
+      if (url === '/api/projects') return Promise.resolve({ json: () => Promise.resolve([]) });
+      if (url === '/api/projects/select') return Promise.resolve({ json: () => Promise.resolve({ success: true }) });
+      return Promise.resolve({ json: () => Promise.resolve({}) });
+    });
+
+    await addProject();
+
+    expect(global.fetch).toHaveBeenCalledWith('/api/pick-folder', { method: 'POST' });
+    expect(clickSpy).not.toHaveBeenCalled();
+    expect(global.prompt).not.toHaveBeenCalled();
+  });
+
+  test('browser input fallback does not prefill a guessed absolute path', async () => {
+    const picker = document.getElementById('folder-picker');
+    Object.defineProperty(picker, 'files', { value: [{ name: 'note.md', webkitRelativePath: 'Folder/note.md' }], configurable: true });
+    global.prompt = jest.fn(() => null);
+
+    await handleFolderPicked();
+
+    expect(global.prompt).toHaveBeenCalledWith('请输入项目文件夹的完整路径：', '');
+  });
+
+  test('does nothing when backend folder picker is cancelled', async () => {
+    const picker = document.getElementById('folder-picker');
+    const clickSpy = jest.spyOn(picker, 'click');
+    global.fetch.mockResolvedValue({ json: () => Promise.resolve({ path: null }) });
+
+    await addProject();
+
+    expect(clickSpy).not.toHaveBeenCalled();
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+});

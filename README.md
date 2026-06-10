@@ -19,7 +19,7 @@ mindx v4.6 用来追踪 Markdown 文件之间的引用关系，提供 Web 可视
 | 外部文件挂载 | 挂载项目外文件或目录，按目录层级显示，重启后保留 |
 | 外部引用视图 | 图 Tab 可过滤外部节点，外部节点使用虚线标识，broken 外部节点不进入视觉视图 |
 | 框选和批量操作 | 多选、框选、右键隐藏、移除、恢复节点 |
-| 213 个测试覆盖 | 136 个 Python 测试，77 个前端 JS 测试 |
+| 227 个测试覆盖 | 143 个 Python 测试，84 个前端 JS 测试 |
 
 ## 视图说明
 
@@ -249,10 +249,10 @@ mindx/
 ## 测试
 
 ```bash
-python -m pytest tests/ -q    # 136 个 Python 测试
-npm test                        # 77 个前端 JS 测试
+python -m pytest tests/ -q    # 143 个 Python 测试
+npm test                        # 84 个前端 JS 测试
 ```
 
 ## License
 
-MIT
+GNU General Public License v3.0

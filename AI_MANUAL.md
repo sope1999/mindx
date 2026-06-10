@@ -69,11 +69,11 @@ projects:
 | `parser.py` | 282 | Markdown 链接提取、file:/// 规范化、文件分类、文件元数据 | `parse_file()`、`normalize_file_uri()`、`resolve_link_target()`、`extract_md_links()`、`strip_root()`、`Link`、`FileInfo`、`_classify_file()` |
 | `watcher.py` | 157 | `watchdog` observer 包装与 500ms 防抖 | `FileWatcher(project_root, on_change)`、`MindxEventHandler`、`start()`、`stop()`、`restart()`、`_should_ignore()`、`_should_track()`、`_debounce_check()` |
 | `config.py` | 227 | `config.yaml` 管理与常量 | `load_config()`、`save_config()`、`add_project()`、`remove_project()`、`get_project_config()`、`FILE_TYPES`、`SYNC_RULES`、`IGNORE_PATTERNS`、`HOST`、`PORT` |
-| `mcp_server.py` | 530 | MCP stdio 服务，通过 HTTP 代理调用 Flask | 16 个 MCP 工具，覆盖项目、图、文件、反向链接、断链、断链静默、历史、扫描和同步建议 |
+| `mcp_server.py` | 530 | MCP stdio 服务，通过 HTTP 代理调用 Flask | 16 个 MCP 工具，覆盖项目、图、文件、反向链接、断链、断链静默、历史、文件重命名和同步建议 |
 | `templates/index.html` | 340 | 单页应用 HTML | 项目标签、文件树面板、4 个标签页，`ref-tree`、`dir-tree`、`dep-graph`、`detail`，设置弹窗、确认弹窗、错误弹窗、文件夹选择输入 |
 | `static/css/style.css` | 1054 | 深色与浅色主题 CSS | `:root` 变量、`[data-theme="light"]` 覆盖、树、图、详情面板、弹窗、信息流样式、外部节点虚线样式 |
 | `static/js/app.js` | 977 | 全部前端逻辑 | 全局 `S` 状态对象、分类、树、图、外部节点过滤、设置、项目、SocketIO、标签切换、重命名、历史面板等函数 |
-| `tests/` | 不适用 | Python 与 JavaScript 回归测试 | `test_parser.py`、`test_graph_engine.py`、`test_server.py`、`test_mcp_server.py`、`app.test.js`。当前有 136 个 pytest 测试，`app.test.js` 中有 77 个 Jest 测试 |
+| `tests/` | 不适用 | Python 与 JavaScript 回归测试 | `test_parser.py`、`test_graph_engine.py`、`test_server.py`、`test_mcp_server.py`、`app.test.js`。当前有 143 个 pytest 测试，`app.test.js` 中有 84 个 Jest 测试 |
 
 **辅助文件：**
 
@@ -530,7 +530,7 @@ renderAll()
 - `实时事件` 与 `同步建议` 标题上的 `📋` 按钮会显示对应历史面板。
 - 重扫按钮 `btn-rescan` 现在真正通过 `/api/scan` 调用后端 `scan_all()` 与 `_load_externals()`，不是刷新页面。
 - 标签切换会在 100ms 后对对应 vis-network 调用 `redraw()`，因为容器需要先可见。
-- `tests/app.test.js` 当前包含 65 个 Jest 测试。
+- `tests/app.test.js` 当前包含 84 个 Jest 测试。
 
 ---
 
@@ -671,7 +671,7 @@ renderAll()
 - MCP 工具通过 `_http_get()` 和 `_http_post()` 代理到 Flask 服务，默认 `SERVER_URL = "http://127.0.0.1:5020"`。
 - 连接失败会返回 `{"_error": "无法连接 mindx 服务 (127.0.0.1:5020)。请先启动 python server.py"}`。
 - `handle_call_tool()` 会捕获未知工具、`ValueError` 和其他异常，并返回 JSON 文本。
-- 当前 13 个工具为：`list_projects`、`switch_project`、`list_files`、`search_files`、`get_file_content`、`get_file_info`、`get_references`、`get_backlinks`、`get_dependency_graph`、`get_broken_links`、`get_sync_suggestions`、`get_change_log`、`rename_file`。
+- 当前 16 个工具为：`list_projects`、`switch_project`、`list_files`、`search_files`、`get_file_content`、`get_file_info`、`get_references`、`get_backlinks`、`get_dependency_graph`、`get_broken_links`、`get_sync_suggestions`、`get_change_log`、`list_silenced_links`、`silence_link`、`unsilence_link`、`rename_file`。
 
 ---
 
